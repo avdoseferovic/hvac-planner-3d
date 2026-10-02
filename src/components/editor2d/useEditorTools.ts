@@ -58,6 +58,22 @@ export interface EditorTools {
   ) => (e: React.PointerEvent) => void;
 }
 
+/** Pointer capture helpers tolerant of synthetic events (tests) and lost pointers. */
+function capturePointer(el: SVGSVGElement | null, id: number): void {
+  try {
+    el?.setPointerCapture(id);
+  } catch {
+    /* no active pointer (synthetic event) — safe to ignore */
+  }
+}
+function releasePointer(el: SVGSVGElement | null, id: number): void {
+  try {
+    el?.releasePointerCapture(id);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function useEditorTools(
   camera: Camera,
   setCamera: (c: Camera) => void,
@@ -164,7 +180,7 @@ export function useEditorTools(
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    svgRef.current!.setPointerCapture(e.pointerId);
+    capturePointer(svgRef.current, e.pointerId);
     const world = clientToWorld(e.clientX, e.clientY);
 
     if (e.button === 1 || e.button === 2) {
@@ -336,7 +352,7 @@ export function useEditorTools(
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
-    svgRef.current?.releasePointerCapture(e.pointerId);
+    releasePointer(svgRef.current, e.pointerId);
     dragRef.current = null;
   };
 
@@ -348,7 +364,7 @@ export function useEditorTools(
   const startEndpointDrag =
     (wallId: string, end: "a" | "b") => (e: React.PointerEvent) => {
       e.stopPropagation();
-      svgRef.current!.setPointerCapture(e.pointerId);
+      capturePointer(svgRef.current, e.pointerId);
       dragRef.current = { kind: "endpoint", wallId, end, moved: false };
     };
 
