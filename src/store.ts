@@ -34,8 +34,10 @@ export interface StoreState {
   showKeepOut: boolean;
   hideRoof: boolean;
   hideSlab: boolean;
-  /** current chain-start point while drawing walls/ducts (null = no draft) */
+  /** current chain-start point while drawing walls (null = no draft) */
   draftAnchor: Point | null;
+  /** accumulated polyline points while drawing a duct */
+  draftPath: Point[];
   /** which default thickness the wall tool uses */
   wallDraftKind: WallDraftKind;
 
@@ -49,6 +51,7 @@ export interface StoreState {
   setHideRoof: (v: boolean) => void;
   setHideSlab: (v: boolean) => void;
   setDraftAnchor: (p: Point | null) => void;
+  setDraftPath: (pts: Point[]) => void;
   setWallDraftKind: (k: WallDraftKind) => void;
 
   /** Mutate the model with undo support: snapshots current model to `past`. */
@@ -77,9 +80,11 @@ export const useStore = create<StoreState>((set, get) => ({
   hideRoof: false,
   hideSlab: false,
   draftAnchor: null,
+  draftPath: [],
   wallDraftKind: "exterior",
 
-  setTool: (tool) => set({ tool, selection: null, draftAnchor: null }),
+  setTool: (tool) =>
+    set({ tool, selection: null, draftAnchor: null, draftPath: [] }),
   setSelection: (selection) => set({ selection }),
   setViewMode: (viewMode) => set({ viewMode }),
   setLang: (lang) => set({ lang }),
@@ -88,6 +93,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setHideRoof: (hideRoof) => set({ hideRoof }),
   setHideSlab: (hideSlab) => set({ hideSlab }),
   setDraftAnchor: (draftAnchor) => set({ draftAnchor }),
+  setDraftPath: (draftPath) => set({ draftPath }),
   setWallDraftKind: (wallDraftKind) => set({ wallDraftKind }),
 
   commit: (mutate) => {
@@ -146,6 +152,7 @@ export const useStore = create<StoreState>((set, get) => ({
       future: [],
       selection: null,
       draftAnchor: null,
+      draftPath: [],
     }),
 }));
 

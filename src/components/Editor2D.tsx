@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { useRooms } from "../useRooms";
 import type { Point } from "../types";
 import { DimensionsLayer } from "./editor2d/DimensionsLayer";
+import { HvacLayer } from "./editor2d/HvacLayer";
 import { GridLayer, type Camera } from "./editor2d/GridLayer";
 import { OpeningsLayer } from "./editor2d/OpeningsLayer";
 import { RoomsLayer } from "./editor2d/RoomsLayer";
@@ -27,6 +28,7 @@ export function Editor2D() {
   const model = useStore((s) => s.model);
   const tool = useStore((s) => s.tool);
   const selection = useStore((s) => s.selection);
+  const showHvac = useStore((s) => s.showHvac);
   const rooms = useRooms();
 
   useEffect(() => {
@@ -126,6 +128,38 @@ export function Editor2D() {
           rooms={rooms}
           scale={camera.scale}
         />
+        {showHvac && (
+          <HvacLayer
+            hvac={model.hvac}
+            walls={model.walls}
+            selectedId={selection?.type === "hvac" ? selection.id : null}
+          />
+        )}
+
+        {/* duct draft preview */}
+        {tools.ductPreview && tools.ductPreview.length >= 1 && (
+          <polyline
+            points={tools.ductPreview.map((p) => `${p.x},${p.y}`).join(" ")}
+            fill="none"
+            stroke="#64748b"
+            strokeWidth={px(2)}
+            strokeDasharray={`${px(8)} ${px(5)}`}
+            pointerEvents="none"
+          />
+        )}
+
+        {/* jumper first-point marker */}
+        {tools.jumperFirst && (
+          <circle
+            cx={tools.jumperFirst.x}
+            cy={tools.jumperFirst.y}
+            r={px(6)}
+            fill="none"
+            stroke="#9333ea"
+            strokeWidth={px(2)}
+            pointerEvents="none"
+          />
+        )}
 
         {/* draft wall preview */}
         {tools.draftWall && (

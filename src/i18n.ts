@@ -57,6 +57,21 @@ const en = {
   "props.interiorThickness": "Interior wall (cm)",
   "props.language": "Language",
 
+  // hvac
+  "hvac.label": "Label",
+  "hvac.depth": "Depth (cm)",
+  "hvac.rotation": "Rotation (°)",
+  "hvac.airflow": "Airflow (m³/h)",
+  "hvac.nominalFlow": "Nominal flow (m³/h)",
+  "hvac.connDiameter": "Connection Ø (mm)",
+  "hvac.drillDiameter": "Core drill Ø (mm)",
+  "hvac.insulated": "Insulated",
+  "hvac.heightAboveFloor": "Height above floor (cm)",
+  "hint.hvacPlace": "Click to place · Esc = cancel",
+  "hint.duct": "Click points along the route · Enter/double-click = finish · Esc = cancel",
+  "hint.jumper": "Click room-side hole, then hallway-side hole",
+  "hint.facade": "Click on an exterior wall",
+
   // openings & rooms
   "props.door": "Door",
   "props.window": "Window",
@@ -135,6 +150,20 @@ const bs: Record<TranslationKey, string> = {
   "props.exteriorThickness": "Vanjski zid (cm)",
   "props.interiorThickness": "Unutrašnji zid (cm)",
   "props.language": "Jezik",
+
+  "hvac.label": "Oznaka",
+  "hvac.depth": "Dubina (cm)",
+  "hvac.rotation": "Rotacija (°)",
+  "hvac.airflow": "Protok (m³/h)",
+  "hvac.nominalFlow": "Nazivni protok (m³/h)",
+  "hvac.connDiameter": "Priključak Ø (mm)",
+  "hvac.drillDiameter": "Bušenje Ø (mm)",
+  "hvac.insulated": "Izolovan",
+  "hvac.heightAboveFloor": "Visina od poda (cm)",
+  "hint.hvacPlace": "Klik za postavljanje · Esc = odustani",
+  "hint.duct": "Klikći tačke duž trase · Enter/dupli klik = završi · Esc = odustani",
+  "hint.jumper": "Klikni rupu u sobi, zatim rupu u hodniku",
+  "hint.facade": "Klikni na vanjski zid",
 
   "props.door": "Vrata",
   "props.window": "Prozor",

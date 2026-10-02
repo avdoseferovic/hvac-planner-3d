@@ -7,8 +7,6 @@ interface ToolDef {
   labelKey: TranslationKey;
   shortcut: string;
   icon: React.ReactNode;
-  /** milestone gating: tools not yet implemented are hidden */
-  enabled: boolean;
 }
 
 const stroke = {
@@ -48,78 +46,191 @@ const icons = {
   ),
   measure: (
     <svg viewBox="0 0 24 24" {...stroke}>
-      <rect
-        x="2"
-        y="9"
-        width="20"
-        height="6"
-        rx="1"
-        transform="rotate(-25 12 12)"
-      />
-      <path d="M8 8.5l1 2M12 6.6l1 2M16 4.8l1 2" transform="rotate(0)" />
+      <rect x="2.5" y="9" width="19" height="6" rx="1" />
+      <path d="M7 9v3M12 9v3M17 9v3" />
+    </svg>
+  ),
+  acUnit: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <rect x="3" y="7" width="18" height="10" rx="1" />
+      <path d="M7 17v2M17 17v2M6 11h12M6 14h8" />
+    </svg>
+  ),
+  supplyDiffuser: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 4v-2M12 22v-2M4 12H2M22 12h-2" />
+    </svg>
+  ),
+  returnGrille: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <rect x="4" y="4" width="16" height="16" rx="1" />
+      <path d="M7 9h10M7 12h10M7 15h10" />
+    </svg>
+  ),
+  duct: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <path d="M3 17V9a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6a2 2 0 0 0 2 2h4" />
+      <path d="M3 13V9M21 21v-4" />
+    </svg>
+  ),
+  hrvUnit: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <rect x="3" y="5" width="18" height="14" rx="1" />
+      <path d="M7 9l4 6M11 9l-4 6M13 9h5M13 15h5M13 12h5" />
+    </svg>
+  ),
+  extractValve: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      <path d="M12 8v-2M12 18v-2" />
+    </svg>
+  ),
+  freshAirValve: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M8 12h8M12 8v8" />
+    </svg>
+  ),
+  jumperDuct: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <circle cx="6" cy="16" r="2.5" />
+      <circle cx="18" cy="16" r="2.5" />
+      <path d="M6 13v-3a6 6 0 0 1 12 0v3" />
+    </svg>
+  ),
+  facadePenetration: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <path d="M9 3v18M15 3v18" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  hvacToggle: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <path d="M3 12h4l2-5 4 10 2-5h6" />
     </svg>
   ),
 };
 
-export function Toolbar() {
+const DRAWING_TOOLS: ToolDef[] = [
+  {
+    tool: "select",
+    labelKey: "tool.select",
+    shortcut: "Esc",
+    icon: icons.select,
+  },
+  { tool: "wall", labelKey: "tool.wall", shortcut: "W", icon: icons.wall },
+  { tool: "door", labelKey: "tool.door", shortcut: "D", icon: icons.door },
+  {
+    tool: "window",
+    labelKey: "tool.window",
+    shortcut: "N",
+    icon: icons.window,
+  },
+  {
+    tool: "measure",
+    labelKey: "tool.measure",
+    shortcut: "M",
+    icon: icons.measure,
+  },
+];
+
+const HVAC_TOOLS: ToolDef[] = [
+  {
+    tool: "acUnit",
+    labelKey: "tool.acUnit",
+    shortcut: "U",
+    icon: icons.acUnit,
+  },
+  {
+    tool: "supplyDiffuser",
+    labelKey: "tool.supplyDiffuser",
+    shortcut: "S",
+    icon: icons.supplyDiffuser,
+  },
+  {
+    tool: "returnGrille",
+    labelKey: "tool.returnGrille",
+    shortcut: "R",
+    icon: icons.returnGrille,
+  },
+  { tool: "duct", labelKey: "tool.duct", shortcut: "T", icon: icons.duct },
+  {
+    tool: "hrvUnit",
+    labelKey: "tool.hrvUnit",
+    shortcut: "",
+    icon: icons.hrvUnit,
+  },
+  {
+    tool: "extractValve",
+    labelKey: "tool.extractValve",
+    shortcut: "",
+    icon: icons.extractValve,
+  },
+  {
+    tool: "freshAirValve",
+    labelKey: "tool.freshAirValve",
+    shortcut: "",
+    icon: icons.freshAirValve,
+  },
+  {
+    tool: "jumperDuct",
+    labelKey: "tool.jumperDuct",
+    shortcut: "J",
+    icon: icons.jumperDuct,
+  },
+  {
+    tool: "facadePenetration",
+    labelKey: "tool.facadePenetration",
+    shortcut: "",
+    icon: icons.facadePenetration,
+  },
+];
+
+function ToolButton({ def }: { def: ToolDef }) {
   const t = useT();
   const tool = useStore((s) => s.tool);
   const setTool = useStore((s) => s.setTool);
+  return (
+    <button
+      className={`toolbtn ${tool === def.tool ? "active" : ""}`}
+      title={
+        def.shortcut ? `${t(def.labelKey)} (${def.shortcut})` : t(def.labelKey)
+      }
+      onClick={() => setTool(def.tool)}
+      data-testid={`tool-${def.tool}`}
+    >
+      {def.icon}
+      {def.shortcut && <span className="shortcut">{def.shortcut}</span>}
+    </button>
+  );
+}
 
-  const tools: ToolDef[] = [
-    {
-      tool: "select",
-      labelKey: "tool.select",
-      shortcut: "Esc",
-      icon: icons.select,
-      enabled: true,
-    },
-    {
-      tool: "wall",
-      labelKey: "tool.wall",
-      shortcut: "W",
-      icon: icons.wall,
-      enabled: true,
-    },
-    {
-      tool: "door",
-      labelKey: "tool.door",
-      shortcut: "D",
-      icon: icons.door,
-      enabled: true,
-    },
-    {
-      tool: "window",
-      labelKey: "tool.window",
-      shortcut: "N",
-      icon: icons.window,
-      enabled: true,
-    },
-    {
-      tool: "measure",
-      labelKey: "tool.measure",
-      shortcut: "M",
-      icon: icons.measure,
-      enabled: true,
-    },
-  ];
+export function Toolbar() {
+  const t = useT();
+  const showHvac = useStore((s) => s.showHvac);
+  const setShowHvac = useStore((s) => s.setShowHvac);
 
   return (
     <div className="toolbar" data-testid="toolbar">
-      {tools
-        .filter((d) => d.enabled)
-        .map((d) => (
-          <button
-            key={d.tool}
-            className={`toolbtn ${tool === d.tool ? "active" : ""}`}
-            title={`${t(d.labelKey)} (${d.shortcut})`}
-            onClick={() => setTool(d.tool)}
-            data-testid={`tool-${d.tool}`}
-          >
-            {d.icon}
-            <span className="shortcut">{d.shortcut}</span>
-          </button>
-        ))}
+      {DRAWING_TOOLS.map((d) => (
+        <ToolButton key={d.tool} def={d} />
+      ))}
+      <div className="toolbar-divider" />
+      {HVAC_TOOLS.map((d) => (
+        <ToolButton key={d.tool} def={d} />
+      ))}
+      <div className="toolbar-divider" />
+      <button
+        className={`toolbtn ${showHvac ? "active" : ""}`}
+        title={t("view.hvacLayer")}
+        onClick={() => setShowHvac(!showHvac)}
+        data-testid="toggle-hvac"
+      >
+        {icons.hvacToggle}
+      </button>
     </div>
   );
 }

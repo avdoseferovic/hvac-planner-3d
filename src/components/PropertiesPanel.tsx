@@ -11,6 +11,7 @@ import { clampOpeningT } from "../openings";
 import { useStore, useT } from "../store";
 import { useRooms } from "../useRooms";
 import type { Opening, Room, Wall } from "../types";
+import { HvacProps } from "./panels/HvacProps";
 import { NumField } from "./panels/NumField";
 import { ProjectProps } from "./panels/ProjectProps";
 
@@ -191,6 +192,7 @@ export function PropertiesPanel() {
   const tool = useStore((s) => s.tool);
   const walls = useStore((s) => s.model.walls);
   const openings = useStore((s) => s.model.openings);
+  const hvac = useStore((s) => s.model.hvac);
   const rooms = useRooms();
 
   const selectedWall =
@@ -205,8 +207,13 @@ export function PropertiesPanel() {
     selection?.type === "room"
       ? rooms.find((r) => r.key === selection.id)
       : undefined;
+  const selectedHvac =
+    selection?.type === "hvac"
+      ? hvac.find((h) => h.id === selection.id)
+      : undefined;
 
-  const hasSelection = selectedWall || selectedOpening || selectedRoom;
+  const hasSelection =
+    selectedWall || selectedOpening || selectedRoom || selectedHvac;
 
   return (
     <aside className="props-panel" data-testid="props-panel">
@@ -215,6 +222,7 @@ export function PropertiesPanel() {
       {selectedWall && <WallProps wall={selectedWall} />}
       {selectedOpening && <OpeningProps opening={selectedOpening} />}
       {selectedRoom && <RoomProps room={selectedRoom} />}
+      {selectedHvac && <HvacProps el={selectedHvac} />}
       {!hasSelection && tool !== "wall" && (
         <p className="muted">{t("props.noSelection")}</p>
       )}

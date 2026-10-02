@@ -14,7 +14,15 @@ export function StatusBar() {
         ? t("hint.opening")
         : tool === "measure"
           ? t("hint.measure")
-          : t("hint.select");
+          : tool === "duct"
+            ? t("hint.duct")
+            : tool === "jumperDuct"
+              ? t("hint.jumper")
+              : tool === "facadePenetration"
+                ? t("hint.facade")
+                : tool === "select"
+                  ? t("hint.select")
+                  : t("hint.hvacPlace");
 
   return (
     <footer className="statusbar" data-testid="statusbar">

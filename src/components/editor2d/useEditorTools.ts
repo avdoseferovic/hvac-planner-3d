@@ -15,9 +15,11 @@ import {
   openingCenter,
   placeOpening,
 } from "../../openings";
+import { commitDuctDraft } from "../../actions";
 import { nextId, useStore } from "../../store";
-import type { Opening, Point, Room, Wall } from "../../types";
+import type { Opening, Point, Room, Tool, Wall } from "../../types";
 import type { Camera } from "./GridLayer";
+import { useHvacTool, type HvacDrag } from "./useHvacTool";
 
 type DragState =
   | { kind: "pan"; startClient: Point; startCamera: Camera }
@@ -29,7 +31,8 @@ type DragState =
       moved: boolean;
     }
   | { kind: "endpoint"; wallId: string; end: "a" | "b"; moved: boolean }
-  | { kind: "moveOpening"; openingId: string; moved: boolean };
+  | { kind: "moveOpening"; openingId: string; moved: boolean }
+  | HvacDrag;
 
 export interface MeasureState {
   a: Point;
@@ -43,6 +46,8 @@ export interface EditorTools {
   draftWall: Wall | null;
   openingPreview: { wall: Wall; opening: Opening } | null;
   measure: MeasureState | null;
+  ductPreview: Point[] | null;
+  jumperFirst: Point | null;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
@@ -70,12 +75,14 @@ export function useEditorTools(
   const setSelection = useStore((s) => s.setSelection);
   const draftAnchor = useStore((s) => s.draftAnchor);
   const setDraftAnchor = useStore((s) => s.setDraftAnchor);
+  const draftPath = useStore((s) => s.draftPath);
   const wallDraftKind = useStore((s) => s.wallDraftKind);
   const commit = useStore((s) => s.commit);
   const checkpoint = useStore((s) => s.checkpoint);
   const updateModel = useStore((s) => s.updateModel);
 
   const { gridSize } = model.settings;
+  const hvacApi = useHvacTool(camera.scale);
   const draftThickness =
     wallDraftKind === "exterior"
       ? model.settings.exteriorWallThickness
@@ -209,6 +216,11 @@ export function useEditorTools(
         return;
       }
       case "select": {
+        const hvacDrag = hvacApi.selectAt(world);
+        if (hvacDrag) {
+          dragRef.current = hvacDrag;
+          return;
+        }
         const opening = hitTestOpening(world);
         if (opening) {
           setSelection({ type: "opening", id: opening.id });
@@ -236,6 +248,7 @@ export function useEditorTools(
         return;
       }
       default:
+        hvacApi.placeAt(tool, world, e.shiftKey);
         return;
     }
   };
@@ -298,6 +311,11 @@ export function useEditorTools(
       return;
     }
 
+    if (drag.kind === "moveHvac") {
+      hvacApi.applyDrag(drag, world, e.shiftKey);
+      return;
+    }
+
     if (drag.kind === "moveOpening") {
       const opening = model.openings.find((o) => o.id === drag.openingId);
       const wall = opening && model.walls.find((w) => w.id === opening.wallId);
@@ -324,6 +342,7 @@ export function useEditorTools(
 
   const onDoubleClick = () => {
     if (tool === "wall") setDraftAnchor(null);
+    if (tool === "duct") commitDuctDraft();
   };
 
   const startEndpointDrag =
@@ -334,10 +353,26 @@ export function useEditorTools(
     };
 
   // ---- overlays ----
-  const snappedCursor =
-    mouse && (tool === "wall" || tool === "measure")
+  const HVAC_POINT_TOOLS: Tool[] = [
+    "acUnit",
+    "hrvUnit",
+    "supplyDiffuser",
+    "returnGrille",
+    "extractValve",
+    "freshAirValve",
+    "jumperDuct",
+  ];
+  const snappedCursor = mouse
+    ? tool === "wall" || tool === "measure"
       ? snapPoint(mouse, tool === "wall" ? draftAnchor : null, shift)
-      : null;
+      : tool === "duct"
+        ? hvacApi.snapHvacPoint(mouse, shift)
+        : HVAC_POINT_TOOLS.includes(tool)
+          ? shift
+            ? mouse
+            : snapToGrid(mouse, gridSize)
+          : null
+    : null;
 
   const draftWall: Wall | null =
     tool === "wall" &&
@@ -360,6 +395,14 @@ export function useEditorTools(
       ? { a: measure.a, b: snappedCursor }
       : measure;
 
+  const ductPreview =
+    tool === "duct" && draftPath.length > 0
+      ? snappedCursor
+        ? [...draftPath, snappedCursor]
+        : draftPath
+      : null;
+  const jumperFirst = tool === "jumperDuct" ? draftAnchor : null;
+
   return {
     mouse,
     shift,
@@ -367,6 +410,8 @@ export function useEditorTools(
     draftWall,
     openingPreview,
     measure: measureLive,
+    ductPreview,
+    jumperFirst,
     onPointerDown,
     onPointerMove,
     onPointerUp,

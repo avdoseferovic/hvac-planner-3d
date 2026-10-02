@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import "./App.css";
-import { deleteSelection } from "./actions";
+import { commitDuctDraft, deleteSelection } from "./actions";
 import { downloadProject, pickAndLoadProject } from "./persistence";
 import { Editor2D } from "./components/Editor2D";
 const View3D = lazy(() =>
@@ -25,7 +25,22 @@ const TOOL_KEYS: Record<string, Tool> = {
 };
 
 /** Tools that are implemented so far (grows per milestone). */
-const ENABLED_TOOLS: Tool[] = ["select", "wall", "door", "window", "measure"];
+const ENABLED_TOOLS: Tool[] = [
+  "select",
+  "wall",
+  "door",
+  "window",
+  "measure",
+  "acUnit",
+  "supplyDiffuser",
+  "returnGrille",
+  "duct",
+  "hrvUnit",
+  "extractValve",
+  "freshAirValve",
+  "jumperDuct",
+  "facadePenetration",
+];
 const VIEW_3D_ENABLED = true;
 
 export default function App() {
@@ -57,12 +72,14 @@ export default function App() {
         return;
       }
       if (e.key === "Escape") {
-        if (st.draftAnchor) st.setDraftAnchor(null);
+        if (st.draftPath.length > 0) st.setDraftPath([]);
+        else if (st.draftAnchor) st.setDraftAnchor(null);
         else if (st.selection) st.setSelection(null);
         else st.setTool("select");
         return;
       }
       if (e.key === "Enter") {
+        if (st.tool === "duct") commitDuctDraft();
         st.setDraftAnchor(null);
         return;
       }

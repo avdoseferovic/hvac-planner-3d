@@ -4,6 +4,7 @@ import { wallPolygonExtended } from "../../geometry";
 import { useStore } from "../../store";
 import { useRooms } from "../../useRooms";
 import { wallBoxes } from "../../walls3d";
+import { Hvac3D } from "./Hvac3D";
 
 /** cm → scene meters */
 const M = 1 / 100;
@@ -173,6 +174,7 @@ export function SceneModel() {
       <Floors />
       <Walls />
       <SlabAndAttic bounds={bounds} />
+      <Hvac3D />
     </group>
   );
 }

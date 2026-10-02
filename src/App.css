@@ -283,3 +283,10 @@
 .view3d-overlay .field {
   margin-bottom: 0;
 }
+
+.toolbar-divider {
+  width: 28px;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
