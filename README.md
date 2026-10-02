@@ -30,29 +30,38 @@ npx vitest run     # unit tests
 - **HVAC layer** is toggleable and visible in both views. Every ceiling
   penetration shows its core-drill diameter; drill Ø defaults to
   connection Ø + 20 mm and can be overridden.
+- **Connection-aware editing.** Wall joints stay together while a joined wall
+  or corner is moved. Duct endpoints bind to named equipment/vent ports and
+  keep following those ports after moving or rotating the connected element.
 
 ## Tools & shortcuts
 
 | Key | Tool |
 |-----|------|
 | Esc | Select (also: cancel drawing / clear selection) |
-| W | Wall — click to chain segments, Shift = free angle, Enter/double-click = finish |
+| W | Wall — click to chain segments; landing on an existing endpoint/centerline joins and finishes automatically, Shift = fine straight placement, Alt = fully free, Enter/double-click = finish |
 | D | Door (click on a wall) |
 | N | Window (click on a wall) |
 | M | Measure (click two points; the finished measurement remains as a temporary snap guide when you switch to Wall) |
 | U | Ducted AC indoor unit (attic) |
 | S | Supply diffuser + ceiling penetration |
 | R | Return grille + penetration |
-| T | Duct — click route points, Enter/double-click = finish; endpoints snap to units and penetrations |
+| T | Duct — Smart 90° routing is the default; click anywhere on a unit to choose its nearest port, Shift adds one direct/free segment, or switch the route mode to Direct; Enter/double-click = finish |
 | J | Jumper duct — click room-side hole, then hallway-side hole |
 | — | HRV unit, extract valve, fresh-air valve, facade penetration (toolbar buttons) |
 | V | Toggle 2D / 3D |
 | Ctrl+Z / Ctrl+Shift+Z | Undo / redo (every mutating action) |
 | Delete | Remove selection |
+| Arrow / Shift+Arrow / Alt+Arrow | Nudge the selected wall or HVAC item by 1 / 10 / 0.1 cm while preserving connections |
 
-Mouse (2D): wheel = zoom, right/middle drag = pan, drag = move, endpoint
-handles reshape walls. Mouse (3D): left-drag orbit, right-drag pan, wheel zoom,
-preset cameras Top / Isometric / Front, toggles to hide the attic volume and slab.
+Mouse (2D): wheel = zoom, right/middle/Space drag = pan, wall/equipment drag =
+1 cm movement, Shift+drag = fine movement, Alt+wall-handle drag = fully free.
+Joined wall handles reshape the full corner without opening a gap. The plan
+health cards and endpoint markers call out open wall or duct ends. Selected
+ducts expose their elbow points, while bound ends continue following moved or
+rotated equipment. Mouse (3D):
+left-drag orbit, right-drag pan, wheel zoom, preset cameras Top / Isometric /
+Front, toggles to hide the attic volume and slab.
 
 Toolbar toggles at the bottom: HVAC layer, keep-out zones, penetration schedule.
 

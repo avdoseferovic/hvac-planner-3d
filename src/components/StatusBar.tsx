@@ -4,6 +4,7 @@ import { useRooms } from "../useRooms";
 export function StatusBar() {
   const t = useT();
   const tool = useStore((s) => s.tool);
+  const ductRoutingMode = useStore((s) => s.ductRoutingMode);
   const wallCount = useStore((s) => s.model.walls.length);
   const rooms = useRooms();
 
@@ -17,7 +18,11 @@ export function StatusBar() {
           : tool === "measure"
             ? t("hint.measure")
             : tool === "duct"
-              ? t("hint.duct")
+              ? t(
+                  ductRoutingMode === "orthogonal"
+                    ? "hint.ductSmart"
+                    : "hint.ductDirect",
+                )
               : tool === "jumperDuct"
                 ? t("hint.jumper")
                 : tool === "facadePenetration"

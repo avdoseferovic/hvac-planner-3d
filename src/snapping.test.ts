@@ -32,6 +32,18 @@ describe("snapDraftPoint", () => {
     expect(p).toEqual({ x: 101, y: 77 });
   });
 
+  it("lets Alt pull away granularly even inside an endpoint magnet radius", () => {
+    const p = snapDraftPoint(
+      { x: 396.25, y: 3.5 },
+      null,
+      { free: true },
+      walls,
+      TOL,
+      GRID,
+    );
+    expect(p).toEqual({ x: 396.25, y: 3.5 });
+  });
+
   it("locks to the dominant axis and grid from an anchor (default and Shift)", () => {
     const anchor = { x: 100, y: 100 };
     // mostly horizontal movement → y locked to anchor, x on grid

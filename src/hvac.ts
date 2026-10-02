@@ -1,5 +1,15 @@
 import { add, closestT, dist, distToSegment, lerp, sub } from "./geometry";
-import type { FacadePenetration, HvacElement, Point, Wall } from "./types";
+import type {
+  AcUnit,
+  Duct,
+  DuctConnection,
+  DuctPortId,
+  FacadePenetration,
+  HrvUnit,
+  HvacElement,
+  Point,
+  Wall,
+} from "./types";
 
 export const CONNECTION_DIAMETERS = [125, 160, 200, 250] as const;
 
@@ -15,34 +25,188 @@ export const mm = (v: number): number => v / 10;
 // Geometry helpers
 // ---------------------------------------------------------------------------
 
-/** Points where a duct endpoint may snap: unit connections and all penetrations. */
-export function ductSnapPoints(hvac: HvacElement[], walls: Wall[]): Point[] {
-  const pts: Point[] = [];
+export interface DuctConnectionTarget {
+  connection: DuctConnection;
+  point: Point;
+  kind: HvacElement["kind"];
+}
+
+type Unit = AcUnit | HrvUnit;
+
+/** Physical plan position of a named unit-side connection port. */
+export function unitPortPoint(unit: Unit, portId: DuctPortId): Point {
+  const local =
+    portId === "left"
+      ? { x: -unit.width / 2, y: 0 }
+      : portId === "right"
+        ? { x: unit.width / 2, y: 0 }
+        : portId === "top"
+          ? { x: 0, y: -unit.depth / 2 }
+          : portId === "bottom"
+            ? { x: 0, y: unit.depth / 2 }
+            : { x: 0, y: 0 };
+  const rad = (unit.rotation * Math.PI) / 180;
+  return {
+    x: unit.pos.x + local.x * Math.cos(rad) - local.y * Math.sin(rad),
+    y: unit.pos.y + local.x * Math.sin(rad) + local.y * Math.cos(rad),
+  };
+}
+
+/**
+ * Physical targets where a duct endpoint can bind. Units expose named side
+ * ports; vents and penetrations expose their actual connection centers.
+ */
+export function ductConnectionTargets(
+  hvac: HvacElement[],
+  walls: Wall[],
+): DuctConnectionTarget[] {
+  const targets: DuctConnectionTarget[] = [];
+  const push = (
+    el: HvacElement,
+    portId: DuctPortId,
+    point: Point | null,
+  ) => {
+    if (!point) return;
+    targets.push({
+      connection: { elementId: el.id, portId },
+      point: { ...point },
+      kind: el.kind,
+    });
+  };
+
   for (const el of hvac) {
     switch (el.kind) {
       case "acUnit":
-      case "hrvUnit":
-        pts.push(el.pos);
+      case "hrvUnit": {
+        for (const portId of ["left", "right", "top", "bottom"] as const) {
+          push(el, portId, unitPortPoint(el, portId));
+        }
         break;
+      }
       case "supplyDiffuser":
       case "returnGrille":
       case "extractValve":
       case "freshAirValve":
-        pts.push(el.pos);
+        push(el, "center", el.pos);
         break;
       case "jumperDuct":
-        pts.push(el.posA, el.posB);
+        push(el, "a", el.posA);
+        push(el, "b", el.posB);
         break;
       case "facadePenetration": {
-        const wall = walls.find((w) => w.id === el.wallId);
-        if (wall) pts.push(lerp(wall.a, wall.b, el.t));
+        push(el, "center", facadePos(el, walls));
         break;
       }
       case "duct":
         break;
     }
   }
-  return pts;
+  return targets;
+}
+
+/** Points where a duct endpoint may snap (backward-compatible geometry API). */
+export function ductSnapPoints(hvac: HvacElement[], walls: Wall[]): Point[] {
+  return ductConnectionTargets(hvac, walls).map((target) => target.point);
+}
+
+export function findDuctConnectionTarget(
+  point: Point,
+  hvac: HvacElement[],
+  walls: Wall[],
+  tolerance: number,
+): DuctConnectionTarget | null {
+  let best: DuctConnectionTarget | null = null;
+  let bestDistance = tolerance;
+  for (const target of ductConnectionTargets(hvac, walls)) {
+    const distance = dist(point, target.point);
+    if (distance <= bestDistance) {
+      best = target;
+      bestDistance = distance;
+    }
+  }
+  if (best) return best;
+
+  // A user will naturally click the equipment body, not its tiny edge port.
+  // Treat that as an explicit connection intent and choose the nearest port.
+  for (let index = hvac.length - 1; index >= 0; index--) {
+    const el = hvac[index];
+    if (el.kind !== "acUnit" && el.kind !== "hrvUnit") continue;
+    const rad = (el.rotation * Math.PI) / 180;
+    const offset = sub(point, el.pos);
+    const local = {
+      x: offset.x * Math.cos(-rad) - offset.y * Math.sin(-rad),
+      y: offset.x * Math.sin(-rad) + offset.y * Math.cos(-rad),
+    };
+    if (
+      Math.abs(local.x) > el.width / 2 ||
+      Math.abs(local.y) > el.depth / 2
+    ) {
+      continue;
+    }
+    const ports = ductConnectionTargets([el], walls);
+    ports.sort(
+      (left, right) =>
+        dist(point, left.point) - dist(point, right.point),
+    );
+    return ports[0] ?? null;
+  }
+  return best;
+}
+
+export function resolveDuctConnection(
+  connection: DuctConnection | undefined,
+  hvac: HvacElement[],
+  walls: Wall[],
+): DuctConnectionTarget | null {
+  if (!connection) return null;
+  return (
+    ductConnectionTargets(hvac, walls).find(
+      (target) =>
+        target.connection.elementId === connection.elementId &&
+        target.connection.portId === connection.portId,
+    ) ?? null
+  );
+}
+
+/** Bind route endpoints to exact/nearby physical ports after drawing. */
+export function connectDuctEndpoints(
+  duct: Duct,
+  hvac: HvacElement[],
+  walls: Wall[],
+  tolerance = 1,
+): void {
+  if (duct.points.length < 2) return;
+  const start = findDuctConnectionTarget(
+    duct.points[0],
+    hvac,
+    walls,
+    tolerance,
+  );
+  const end = findDuctConnectionTarget(
+    duct.points[duct.points.length - 1],
+    hvac,
+    walls,
+    tolerance,
+  );
+  if (start) duct.startConnection = { ...start.connection };
+  else delete duct.startConnection;
+  if (end) duct.endConnection = { ...end.connection };
+  else delete duct.endConnection;
+}
+
+/** Route points with bound endpoints resolved against the live equipment. */
+export function resolveDuctPoints(
+  duct: Duct,
+  hvac: HvacElement[],
+  walls: Wall[],
+): Point[] {
+  const points = duct.points.map((point) => ({ ...point }));
+  if (points.length === 0) return points;
+  const start = resolveDuctConnection(duct.startConnection, hvac, walls);
+  const end = resolveDuctConnection(duct.endConnection, hvac, walls);
+  if (start) points[0] = { ...start.point };
+  if (end) points[points.length - 1] = { ...end.point };
+  return points;
 }
 
 /** Position of a facade penetration in plan coordinates. */
@@ -110,14 +274,15 @@ export function hitTestHvac(
         break;
       }
       case "duct": {
-        for (let v = 0; v < el.points.length; v++) {
-          if (dist(p, el.points[v]) <= mm(el.diameter) / 2 + tol) {
+        const points = resolveDuctPoints(el, hvac, walls);
+        for (let v = 0; v < points.length; v++) {
+          if (dist(p, points[v]) <= mm(el.diameter) / 2 + tol) {
             return { el, part: `vertex:${v}` };
           }
         }
-        for (let s = 0; s < el.points.length - 1; s++) {
+        for (let s = 0; s < points.length - 1; s++) {
           if (
-            distToSegment(p, el.points[s], el.points[s + 1]) <=
+            distToSegment(p, points[s], points[s + 1]) <=
             mm(el.diameter) / 2 + tol
           ) {
             return { el, part: "body" };

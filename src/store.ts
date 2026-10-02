@@ -8,6 +8,7 @@ import {
   type Tool,
   type ViewMode,
 } from "./types";
+import type { DuctRoutingMode } from "./duct-drafting";
 
 export type WallDraftKind = "exterior" | "interior";
 
@@ -43,6 +44,8 @@ export interface StoreState {
   draftPath: Point[];
   /** which default thickness the wall tool uses */
   wallDraftKind: WallDraftKind;
+  /** default geometry for newly clicked duct route segments */
+  ductRoutingMode: DuctRoutingMode;
 
   // --- actions ---
   setTool: (tool: Tool) => void;
@@ -57,6 +60,7 @@ export interface StoreState {
   setDraftAnchor: (p: Point | null) => void;
   setDraftPath: (pts: Point[]) => void;
   setWallDraftKind: (k: WallDraftKind) => void;
+  setDuctRoutingMode: (mode: DuctRoutingMode) => void;
 
   /** Mutate the model with undo support: snapshots current model to `past`. */
   commit: (mutate: (m: Model) => void) => void;
@@ -87,6 +91,7 @@ export const useStore = create<StoreState>((set, get) => ({
   draftAnchor: null,
   draftPath: [],
   wallDraftKind: "exterior",
+  ductRoutingMode: "orthogonal",
 
   setTool: (tool) =>
     set({ tool, selection: [], draftAnchor: null, draftPath: [] }),
@@ -101,6 +106,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setDraftAnchor: (draftAnchor) => set({ draftAnchor }),
   setDraftPath: (draftPath) => set({ draftPath }),
   setWallDraftKind: (wallDraftKind) => set({ wallDraftKind }),
+  setDuctRoutingMode: (ductRoutingMode) => set({ ductRoutingMode }),
 
   commit: (mutate) => {
     const { model, past } = get();

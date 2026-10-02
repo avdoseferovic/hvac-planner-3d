@@ -1,6 +1,7 @@
 import {
   CONNECTION_DIAMETERS,
   autoDrill,
+  resolveDuctConnection,
   updateConnDiameter,
 } from "../../hvac";
 import { useStore, useT } from "../../store";
@@ -23,6 +24,49 @@ const KIND_LABEL_KEYS = {
 export function HvacProps({ el }: { el: HvacElement }) {
   const t = useT();
   const commit = useStore((s) => s.commit);
+  const model = useStore((s) => s.model);
+  const connectedRouteCount = model.hvac.filter(
+    (candidate) =>
+      candidate.kind === "duct" &&
+      (candidate.startConnection?.elementId === el.id ||
+        candidate.endConnection?.elementId === el.id),
+  ).length;
+
+  const connectionLabel = (
+    connection: Extract<HvacElement, { kind: "duct" }>["startConnection"],
+  ): string => {
+    const target = resolveDuctConnection(
+      connection,
+      model.hvac,
+      model.walls,
+    );
+    if (!target) return t("hvac.unconnected");
+    const targetElement = model.hvac.find(
+      (candidate) => candidate.id === target.connection.elementId,
+    );
+    const name =
+      targetElement &&
+      (targetElement.kind === "acUnit" || targetElement.kind === "hrvUnit")
+        ? targetElement.label
+        : t(KIND_LABEL_KEYS[target.kind]);
+    const portKey = {
+      center: "hvac.portCenter",
+      left: "hvac.portLeft",
+      right: "hvac.portRight",
+      top: "hvac.portTop",
+      bottom: "hvac.portBottom",
+      a: "hvac.portA",
+      b: "hvac.portB",
+    }[target.connection.portId] as
+      | "hvac.portCenter"
+      | "hvac.portLeft"
+      | "hvac.portRight"
+      | "hvac.portTop"
+      | "hvac.portBottom"
+      | "hvac.portA"
+      | "hvac.portB";
+    return `${name} · ${t(portKey)}`;
+  };
 
   const edit = (fn: (e: HvacElement) => void) =>
     commit((m) => {
@@ -135,6 +179,10 @@ export function HvacProps({ el }: { el: HvacElement }) {
               }
             />
           )}
+          <div className="connection-summary">
+            <span className={connectedRouteCount > 0 ? "dot connected" : "dot"} />
+            {connectedRouteCount} {t("hvac.connectedRoutes")}
+          </div>
         </>
       )}
 
@@ -177,6 +225,16 @@ export function HvacProps({ el }: { el: HvacElement }) {
 
       {el.kind === "duct" && (
         <>
+          <div className="route-connections">
+            <div>
+              <span>{t("hvac.routeStart")}</span>
+              <strong>{connectionLabel(el.startConnection)}</strong>
+            </div>
+            <div>
+              <span>{t("hvac.routeEnd")}</span>
+              <strong>{connectionLabel(el.endConnection)}</strong>
+            </div>
+          </div>
           {connSelect(el.diameter, (v) =>
             edit((h) => {
               if (h.kind === "duct") h.diameter = v;

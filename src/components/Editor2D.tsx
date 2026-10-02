@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { screenOffsetToWorld } from "../camera";
-import { dist, formatLength, wallPolygonExtended } from "../geometry";
+import {
+  dist,
+  distToSegment,
+  formatLength,
+  wallPolygonExtended,
+} from "../geometry";
+import {
+  findDuctConnectionTarget,
+  resolveDuctConnection,
+} from "../hvac";
 import { penetrationSchedule, proximityWarnings } from "../schedule";
-import { useStore } from "../store";
+import { useStore, useT } from "../store";
 import { useRooms } from "../useRooms";
 import type { Point } from "../types";
+import { analyzeWallStructure } from "../wall-connections";
 import { DimensionsLayer } from "./editor2d/DimensionsLayer";
 import { HvacLayer } from "./editor2d/HvacLayer";
 import { KeepOutLayer } from "./editor2d/KeepOutLayer";
@@ -20,6 +30,7 @@ const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
 export function Editor2D() {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -36,6 +47,7 @@ export function Editor2D() {
   const selection = useStore((s) => s.selection);
   const showHvac = useStore((s) => s.showHvac);
   const showKeepOut = useStore((s) => s.showKeepOut);
+  const ductRoutingMode = useStore((s) => s.ductRoutingMode);
   const rooms = useRooms();
 
   useEffect(() => {
@@ -91,6 +103,30 @@ export function Editor2D() {
     if (!showHvac) return [];
     return proximityWarnings(penetrationSchedule(model, rooms));
   }, [model, rooms, showHvac]);
+  const structure = useMemo(
+    () => analyzeWallStructure(model.walls),
+    [model.walls],
+  );
+  const routeHealth = useMemo(() => {
+    const routes = model.hvac.filter((element) => element.kind === "duct");
+    let connectedEnds = 0;
+    let completeRoutes = 0;
+    for (const route of routes) {
+      const start = Boolean(
+        resolveDuctConnection(route.startConnection, model.hvac, model.walls),
+      );
+      const end = Boolean(
+        resolveDuctConnection(route.endConnection, model.hvac, model.walls),
+      );
+      connectedEnds += Number(start) + Number(end);
+      if (start && end) completeRoutes += 1;
+    }
+    return {
+      routes: routes.length,
+      completeRoutes,
+      openEnds: routes.length * 2 - connectedEnds,
+    };
+  }, [model.hvac, model.walls]);
 
   const viewBox = `${camera.cx - size.w / 2 / camera.scale} ${camera.cy - size.h / 2 / camera.scale} ${size.w / camera.scale} ${size.h / camera.scale}`;
   const selectedIds = useMemo(() => {
@@ -117,6 +153,22 @@ export function Editor2D() {
         ? "default"
         : "crosshair";
   const isEmpty = model.walls.length === 0 && model.hvac.length === 0;
+  const wallSnapConnected =
+    tool === "wall" &&
+    tools.snappedCursor &&
+    model.walls.some(
+      (wall) =>
+        distToSegment(tools.snappedCursor!, wall.a, wall.b) < 0.01,
+    );
+  const ductSnapTarget =
+    tool === "duct" && tools.snappedCursor
+      ? findDuctConnectionTarget(
+          tools.snappedCursor,
+          model.hvac,
+          model.walls,
+          0.01,
+        )
+      : null;
 
   return (
     <div
@@ -133,6 +185,8 @@ export function Editor2D() {
         onPointerDown={tools.onPointerDown}
         onPointerMove={tools.onPointerMove}
         onPointerUp={tools.onPointerUp}
+        onPointerCancel={tools.onPointerUp}
+        onPointerLeave={tools.onPointerLeave}
         onDoubleClick={tools.onDoubleClick}
         style={{ display: "block", cursor }}
       >
@@ -156,6 +210,33 @@ export function Editor2D() {
             rotation={camera.rotation}
           />
           <WallsLayer walls={model.walls} selectedIds={selectedIds.wall} />
+          {(tool === "wall" || tool === "select") && (
+            <g pointerEvents="none" data-testid="wall-connection-health">
+              {structure.joints.map((joint, index) => (
+                <circle
+                  key={`joint-${index}`}
+                  cx={joint.point.x}
+                  cy={joint.point.y}
+                  r={px(3.5)}
+                  fill="#0f766e"
+                  stroke="#ffffff"
+                  strokeWidth={px(1.5)}
+                />
+              ))}
+              {structure.openEnds.map((point, index) => (
+                <circle
+                  key={`open-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={px(5)}
+                  fill="#fff7ed"
+                  stroke="#f97316"
+                  strokeWidth={px(2)}
+                  data-testid="wall-open-end"
+                />
+              ))}
+            </g>
+          )}
           {tools.rectangleGuide && (
             <g pointerEvents="none" data-testid="rectangle-guide">
               <polygon
@@ -215,6 +296,7 @@ export function Editor2D() {
               hvac={model.hvac}
               walls={model.walls}
               selectedIds={selectedIds.hvac}
+              scale={camera.scale}
             />
           )}
 
@@ -248,14 +330,28 @@ export function Editor2D() {
 
           {/* duct draft preview */}
           {tools.ductPreview && tools.ductPreview.length >= 1 && (
-            <polyline
-              points={tools.ductPreview.map((p) => `${p.x},${p.y}`).join(" ")}
-              fill="none"
-              stroke="#64748b"
-              strokeWidth={px(2)}
-              strokeDasharray={`${px(8)} ${px(5)}`}
-              pointerEvents="none"
-            />
+            <g pointerEvents="none">
+              <polyline
+                points={tools.ductPreview
+                  .map((p) => `${p.x},${p.y}`)
+                  .join(" ")}
+                fill="none"
+                stroke="#94a3b8"
+                strokeWidth={px(7)}
+                strokeOpacity={0.22}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <polyline
+                points={tools.ductPreview
+                  .map((p) => `${p.x},${p.y}`)
+                  .join(" ")}
+                fill="none"
+                stroke="#475569"
+                strokeWidth={px(2)}
+                strokeDasharray={`${px(8)} ${px(5)}`}
+              />
+            </g>
           )}
 
           {/* cut-tool span preview */}
@@ -291,7 +387,7 @@ export function Editor2D() {
 
           {/* draft wall preview */}
           {tools.draftWall && (
-            <g pointerEvents="none">
+            <g pointerEvents="none" data-testid="draft-wall">
               <polygon
                 points={wallPolygonExtended(tools.draftWall)
                   .map((p) => `${p.x},${p.y}`)
@@ -354,6 +450,60 @@ export function Editor2D() {
             />
           )}
 
+          {wallSnapConnected && tools.snappedCursor && (
+            <g pointerEvents="none" data-testid="wall-connect-snap">
+              <circle
+                cx={tools.snappedCursor.x}
+                cy={tools.snappedCursor.y}
+                r={px(9)}
+                fill="#ecfdf5"
+                fillOpacity={0.9}
+                stroke="#0f766e"
+                strokeWidth={px(2.5)}
+              />
+              <text
+                x={tools.snappedCursor.x}
+                y={tools.snappedCursor.y - px(14)}
+                textAnchor="middle"
+                fontSize={px(11)}
+                fontWeight={800}
+                fill="#0f766e"
+                stroke="#ffffff"
+                strokeWidth={px(3)}
+                paintOrder="stroke"
+              >
+                {t("status.join")}
+              </text>
+            </g>
+          )}
+
+          {ductSnapTarget && (
+            <g pointerEvents="none" data-testid="duct-connect-snap">
+              <circle
+                cx={ductSnapTarget.point.x}
+                cy={ductSnapTarget.point.y}
+                r={px(10)}
+                fill="#ccfbf1"
+                fillOpacity={0.82}
+                stroke="#0f766e"
+                strokeWidth={px(2.5)}
+              />
+              <text
+                x={ductSnapTarget.point.x}
+                y={ductSnapTarget.point.y - px(15)}
+                textAnchor="middle"
+                fontSize={px(11)}
+                fontWeight={800}
+                fill="#0f766e"
+                stroke="#ffffff"
+                strokeWidth={px(3)}
+                paintOrder="stroke"
+              >
+                {t("status.connectPort")}
+              </text>
+            </g>
+          )}
+
           {/* endpoint handles for the selected wall */}
           {selectedWall &&
             (["a", "b"] as const).map((end) => (
@@ -371,6 +521,76 @@ export function Editor2D() {
             ))}
         </g>
       </svg>
+      {tool === "duct" && (
+        <div className="editor-mode-chip" data-testid="duct-routing-chip">
+          <span className="mode-symbol" aria-hidden="true">
+            ⌞
+          </span>
+          <span>
+            <strong>
+              {t(
+                tools.shift
+                  ? "hvac.routingDirect"
+                  : ductRoutingMode === "orthogonal"
+                    ? "hvac.routingOrthogonal"
+                    : "hvac.routingDirect",
+              )}
+            </strong>
+            <small>
+              {t(
+                tools.shift && ductRoutingMode === "orthogonal"
+                  ? "hvac.routingTemporaryDirect"
+                  : ductRoutingMode === "orthogonal"
+                    ? "hvac.routingShiftDirect"
+                    : "hvac.routingDirectActive",
+              )}
+            </small>
+          </span>
+        </div>
+      )}
+      {!isEmpty && (
+        <div className="editor-health" data-testid="editor-health">
+          {model.walls.length > 0 && (
+            <div
+              className={`health-card ${
+                structure.openEnds.length === 0 ? "healthy" : "attention"
+              }`}
+            >
+              <span className="health-icon" aria-hidden="true">
+                {structure.openEnds.length === 0 ? "✓" : "!"}
+              </span>
+              <span>
+                <strong>
+                  {structure.openEnds.length === 0
+                    ? t("status.structureReady")
+                    : `${structure.openEnds.length} ${t("status.openEnds")}`}
+                </strong>
+                <small>{t("status.wallMovePrecision")}</small>
+              </span>
+            </div>
+          )}
+          {routeHealth.routes > 0 && (
+            <div
+              className={`health-card ${
+                routeHealth.openEnds === 0 ? "healthy" : "attention"
+              }`}
+            >
+              <span className="health-icon" aria-hidden="true">
+                {routeHealth.openEnds === 0 ? "✓" : "!"}
+              </span>
+              <span>
+                <strong>
+                  {routeHealth.completeRoutes}/{routeHealth.routes}{" "}
+                  {t("status.routesConnected")}
+                </strong>
+                <small>
+                  {routeHealth.openEnds} {t("status.routeOpenEnds")}
+                </small>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
       {isEmpty && <EmptyState />}
       <ZoomControls
         camera={camera}

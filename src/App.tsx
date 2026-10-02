@@ -1,6 +1,10 @@
 import { lazy, Suspense, useEffect } from "react";
 import "./App.css";
-import { commitDuctDraft, deleteSelection } from "./actions";
+import {
+  commitDuctDraft,
+  deleteSelection,
+  nudgeSelection,
+} from "./actions";
 import { isTextEntryTarget } from "./dom";
 import {
   applyGrouping,
@@ -129,6 +133,28 @@ export default function App() {
         }
         return;
       }
+      const arrow = {
+        ArrowLeft: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+        ArrowUp: { x: 0, y: -1 },
+        ArrowDown: { x: 0, y: 1 },
+      }[e.key];
+      if (
+        arrow &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        st.selection.some(
+          (item) => item.type === "wall" || item.type === "hvac",
+        )
+      ) {
+        e.preventDefault();
+        const step = e.altKey ? 0.1 : e.shiftKey ? 10 : 1;
+        nudgeSelection(st.selection, {
+          x: arrow.x * step,
+          y: arrow.y * step,
+        });
+        return;
+      }
       if (e.key === "Escape") {
         if (st.draftPath.length > 0) st.setDraftPath([]);
         else if (st.draftAnchor) st.setDraftAnchor(null);
@@ -167,12 +193,14 @@ export default function App() {
           <button
             className={viewMode === "2d" ? "active" : ""}
             onClick={() => setViewMode("2d")}
+            aria-pressed={viewMode === "2d"}
           >
             {t("view.2d")}
           </button>
           <button
             className={viewMode === "3d" ? "active" : ""}
             onClick={() => setViewMode("3d")}
+            aria-pressed={viewMode === "3d"}
           >
             {t("view.3d")}
           </button>

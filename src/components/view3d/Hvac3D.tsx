@@ -1,41 +1,79 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { facadePos, mm } from "../../hvac";
+import { buildDuctRoute3D } from "../../hvac-routing";
 import { normalize, perp, sub } from "../../geometry";
 import { useStore } from "../../store";
 import { HVAC_COLORS } from "../editor2d/HvacLayer";
-import type { Duct, JumperDuct, Point } from "../../types";
+import type {
+  Duct,
+  HvacElement,
+  JumperDuct,
+  Point,
+  ProjectSettings,
+  Wall,
+} from "../../types";
 
 /** cm → scene meters */
 const M = 1 / 100;
 
-function DuctTube({ duct, atticY }: { duct: Duct; atticY: number }) {
-  const geometry = useMemo(() => {
-    if (duct.points.length < 2) return null;
-    const pts = duct.points.map(
-      (p) => new THREE.Vector3(p.x * M, atticY, p.y * M),
+function DuctTube({
+  duct,
+  hvac,
+  walls,
+  settings,
+}: {
+  duct: Duct;
+  hvac: HvacElement[];
+  walls: Wall[];
+  settings: ProjectSettings;
+}) {
+  const route = useMemo(() => {
+    const routePoints = buildDuctRoute3D(duct, hvac, walls, settings);
+    if (routePoints.length < 2) return null;
+    const pts = routePoints.map(
+      (point) => new THREE.Vector3(point.x, point.y, point.z),
     );
     const path = new THREE.CurvePath<THREE.Vector3>();
     for (let i = 0; i < pts.length - 1; i++) {
       path.add(new THREE.LineCurve3(pts[i], pts[i + 1]));
     }
-    return new THREE.TubeGeometry(
-      path,
-      Math.max(2, duct.points.length * 4),
-      (mm(duct.diameter) / 2) * M,
-      12,
-      false,
-    );
-  }, [duct.points, duct.diameter, atticY]);
-  if (!geometry) return null;
+    return {
+      geometry: new THREE.TubeGeometry(
+        path,
+        Math.max(8, pts.length * 6),
+        (mm(duct.diameter) / 2) * M,
+        12,
+        false,
+      ),
+      start: pts[0],
+      end: pts[pts.length - 1],
+    };
+  }, [duct, hvac, walls, settings]);
+  if (!route) return null;
+  const collarRadius = (mm(duct.diameter) / 2) * M * 1.16;
   return (
-    <mesh geometry={geometry} castShadow>
-      <meshStandardMaterial
-        color={duct.insulated ? "#94a3b8" : HVAC_COLORS.duct}
-        roughness={0.4}
-        metalness={0.3}
-      />
-    </mesh>
+    <group>
+      <mesh geometry={route.geometry} castShadow>
+        <meshStandardMaterial
+          color={duct.insulated ? "#94a3b8" : HVAC_COLORS.duct}
+          roughness={0.4}
+          metalness={0.3}
+        />
+      </mesh>
+      {duct.startConnection && (
+        <mesh position={route.start}>
+          <sphereGeometry args={[collarRadius, 16, 12]} />
+          <meshStandardMaterial color="#0f766e" metalness={0.35} roughness={0.35} />
+        </mesh>
+      )}
+      {duct.endConnection && (
+        <mesh position={route.end}>
+          <sphereGeometry args={[collarRadius, 16, 12]} />
+          <meshStandardMaterial color="#0f766e" metalness={0.35} roughness={0.35} />
+        </mesh>
+      )}
+    </group>
   );
 }
 
@@ -123,7 +161,6 @@ export function Hvac3D() {
   const ceilingY = settings.wallHeight * M;
   const slabT = settings.slabThickness * M;
   const slabTopY = ceilingY + slabT;
-  const atticDuctY = slabTopY + 0.3;
 
   return (
     <group>
@@ -196,7 +233,15 @@ export function Hvac3D() {
           }
 
           case "duct":
-            return <DuctTube key={el.id} duct={el} atticY={atticDuctY} />;
+            return (
+              <DuctTube
+                key={el.id}
+                duct={el}
+                hvac={hvac}
+                walls={walls}
+                settings={settings}
+              />
+            );
 
           case "jumperDuct":
             return (

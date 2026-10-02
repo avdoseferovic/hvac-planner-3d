@@ -1,5 +1,10 @@
 import { memo } from "react";
-import { facadePos, mm } from "../../hvac";
+import {
+  facadePos,
+  mm,
+  resolveDuctConnection,
+  resolveDuctPoints,
+} from "../../hvac";
 import type { HvacElement, Point, Wall } from "../../types";
 
 export const HVAC_COLORS: Record<string, string> = {
@@ -48,11 +53,21 @@ function DrillLabel({
 function UnitBox({
   el,
   selected,
+  connectedPorts,
+  scale,
 }: {
   el: HvacElement & { kind: "acUnit" | "hrvUnit" };
   selected: boolean;
+  connectedPorts: ReadonlySet<string>;
+  scale: number;
 }) {
   const color = selected ? SEL : HVAC_COLORS[el.kind];
+  const ports = [
+    { id: "left", x: -el.width / 2, y: 0 },
+    { id: "right", x: el.width / 2, y: 0 },
+    { id: "top", x: 0, y: -el.depth / 2 },
+    { id: "bottom", x: 0, y: el.depth / 2 },
+  ] as const;
   return (
     <g transform={`translate(${el.pos.x} ${el.pos.y}) rotate(${el.rotation})`}>
       <rect
@@ -74,6 +89,23 @@ function UnitBox({
         strokeWidth={1}
         vectorEffect="non-scaling-stroke"
       />
+      {ports.map((port) => {
+        const connected = connectedPorts.has(`${el.id}:${port.id}`);
+        return (
+          <circle
+            key={port.id}
+            cx={port.x}
+            cy={port.y}
+            r={4 / scale}
+            fill={connected ? "#0f766e" : "#ffffff"}
+            stroke={connected ? "#0f766e" : color}
+            strokeWidth={connected ? 2.5 : 1.5}
+            vectorEffect="non-scaling-stroke"
+            data-duct-port={`${el.id}:${port.id}`}
+            data-connected={connected ? "true" : "false"}
+          />
+        );
+      })}
       <text
         textAnchor="middle"
         dominantBaseline="middle"
@@ -92,6 +124,7 @@ interface Props {
   hvac: HvacElement[];
   walls: Wall[];
   selectedIds: ReadonlySet<string>;
+  scale: number;
 }
 
 /** 2D symbols for the HVAC layer, incl. drill-diameter labels for penetrations. */
@@ -99,7 +132,18 @@ export const HvacLayer = memo(function HvacLayer({
   hvac,
   walls,
   selectedIds,
+  scale,
 }: Props) {
+  const connectedPorts = new Set<string>();
+  for (const el of hvac) {
+    if (el.kind !== "duct") continue;
+    for (const connection of [el.startConnection, el.endConnection]) {
+      if (resolveDuctConnection(connection, hvac, walls) && connection) {
+        connectedPorts.add(`${connection.elementId}:${connection.portId}`);
+      }
+    }
+  }
+
   return (
     <g>
       {/* ducts go below other symbols */}
@@ -107,7 +151,22 @@ export const HvacLayer = memo(function HvacLayer({
         if (el.kind !== "duct") return null;
         const selected = selectedIds.has(el.id);
         const color = selected ? SEL : HVAC_COLORS.duct;
-        const pts = el.points.map((p) => `${p.x},${p.y}`).join(" ");
+        const points = resolveDuctPoints(el, hvac, walls);
+        const pts = points.map((p) => `${p.x},${p.y}`).join(" ");
+        const endpointStates = [
+          {
+            point: points[0],
+            connected: Boolean(
+              resolveDuctConnection(el.startConnection, hvac, walls),
+            ),
+          },
+          {
+            point: points[points.length - 1],
+            connected: Boolean(
+              resolveDuctConnection(el.endConnection, hvac, walls),
+            ),
+          },
+        ];
         return (
           <g key={el.id}>
             <polyline
@@ -137,6 +196,40 @@ export const HvacLayer = memo(function HvacLayer({
               strokeDasharray="10 6"
               vectorEffect="non-scaling-stroke"
             />
+            {endpointStates.map(
+              ({ point, connected }, index) =>
+                point && (
+                  <circle
+                    key={index}
+                    cx={point.x}
+                    cy={point.y}
+                    r={5 / scale}
+                    fill={connected ? "#0f766e" : "#fff7ed"}
+                    stroke={connected ? "#0f766e" : "#f97316"}
+                    strokeWidth={2}
+                    vectorEffect="non-scaling-stroke"
+                    data-testid={
+                      connected
+                        ? "duct-endpoint-connected"
+                        : "duct-endpoint-open"
+                    }
+                  />
+                ),
+            )}
+            {selected &&
+              points.slice(1, -1).map((point, index) => (
+                <circle
+                  key={`vertex-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={4.5 / scale}
+                  fill="#ffffff"
+                  stroke={SEL}
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                  data-testid="duct-elbow-handle"
+                />
+              ))}
           </g>
         );
       })}
@@ -146,7 +239,15 @@ export const HvacLayer = memo(function HvacLayer({
         switch (el.kind) {
           case "acUnit":
           case "hrvUnit":
-            return <UnitBox key={el.id} el={el} selected={selected} />;
+            return (
+              <UnitBox
+                key={el.id}
+                el={el}
+                selected={selected}
+                connectedPorts={connectedPorts}
+                scale={scale}
+              />
+            );
 
           case "supplyDiffuser":
           case "extractValve":

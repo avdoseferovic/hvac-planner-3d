@@ -114,9 +114,27 @@ export interface Duct {
   groupId?: string;
   /** polyline in plan (cm); runs at attic height */
   points: Point[];
+  /** persistent binding from the first route point to a physical HVAC port */
+  startConnection?: DuctConnection;
+  /** persistent binding from the last route point to a physical HVAC port */
+  endConnection?: DuctConnection;
   /** diameter in mm */
   diameter: number;
   insulated: boolean;
+}
+
+export type DuctPortId =
+  | "center"
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "a"
+  | "b";
+
+export interface DuctConnection {
+  elementId: string;
+  portId: DuctPortId;
 }
 
 export interface HrvUnit {

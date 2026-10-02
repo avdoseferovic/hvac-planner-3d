@@ -11,14 +11,22 @@ import {
   makeSupplyDiffuser,
 } from "../../hvac-factories";
 import {
-  ductSnapPoints,
+  findDuctConnectionTarget,
   hitTestHvac,
   moveHvac,
+  resolveDuctPoints,
   type HvacHitPart,
 } from "../../hvac";
 import { findWallNear } from "../../openings";
 import { useStore } from "../../store";
-import type { HvacElement, Point, Tool } from "../../types";
+import type {
+  DuctConnection,
+  HvacElement,
+  Point,
+  Tool,
+} from "../../types";
+import { snapWallMoveDelta } from "../../wall-connections";
+import { appendDuctRoutePoint } from "../../duct-drafting";
 
 export interface HvacDrag {
   kind: "moveHvac";
@@ -50,23 +58,42 @@ export function useHvacTool(scale: number): HvacToolApi {
   const commit = useStore((s) => s.commit);
   const checkpoint = useStore((s) => s.checkpoint);
   const updateModel = useStore((s) => s.updateModel);
+  const ductRoutingMode = useStore((s) => s.ductRoutingMode);
 
   const { gridSize } = model.settings;
 
   const snapHvacPoint = useCallback(
     (raw: Point, free: boolean): Point => {
-      const targets = ductSnapPoints(model.hvac, model.walls);
-      let best: Point | null = null;
-      let bestD = 15 / scale;
-      for (const t of targets) {
-        const d = dist(raw, t);
-        if (d < bestD) {
-          bestD = d;
-          best = t;
-        }
-      }
-      if (best) return { ...best };
+      const target = findDuctConnectionTarget(
+        raw,
+        model.hvac,
+        model.walls,
+        15 / scale,
+      );
+      if (target) return { ...target.point };
       return free ? raw : snapToGrid(raw, gridSize);
+    },
+    [model.hvac, model.walls, scale, gridSize],
+  );
+
+  const snapHvacConnection = useCallback(
+    (
+      raw: Point,
+      free: boolean,
+    ): { point: Point; connection?: DuctConnection } => {
+      const best = findDuctConnectionTarget(
+        raw,
+        model.hvac,
+        model.walls,
+        15 / scale,
+      );
+      if (best) {
+        return {
+          point: { ...best.point },
+          connection: { ...best.connection },
+        };
+      }
+      return { point: free ? { ...raw } : snapToGrid(raw, gridSize) };
     },
     [model.hvac, model.walls, scale, gridSize],
   );
@@ -118,7 +145,13 @@ export function useHvacTool(scale: number): HvacToolApi {
         }
         case "duct": {
           const snapped = snapHvacPoint(world, shiftKey);
-          setDraftPath([...draftPath, snapped]);
+          setDraftPath(
+            appendDuctRoutePoint(
+              draftPath,
+              snapped,
+              shiftKey ? "direct" : ductRoutingMode,
+            ),
+          );
           return true;
         }
         case "facadePenetration": {
@@ -148,6 +181,7 @@ export function useHvacTool(scale: number): HvacToolApi {
       scale,
       draftAnchor,
       draftPath,
+      ductRoutingMode,
       pushElement,
       setDraftAnchor,
       setDraftPath,
@@ -160,13 +194,17 @@ export function useHvacTool(scale: number): HvacToolApi {
       if (!showHvac) return null;
       const hit = hitTestHvac(model.hvac, model.walls, world, 6 / scale);
       if (!hit) return null;
+      const orig = structuredClone(hit.el);
+      if (orig.kind === "duct") {
+        orig.points = resolveDuctPoints(orig, model.hvac, model.walls);
+      }
       // selection is decided by the caller (may expand to a group)
       return {
         kind: "moveHvac",
         id: hit.el.id,
         part: hit.part,
         startWorld: world,
-        orig: structuredClone(hit.el),
+        orig,
         moved: false,
       };
     },
@@ -179,19 +217,15 @@ export function useHvacTool(scale: number): HvacToolApi {
         x: world.x - drag.startWorld.x,
         y: world.y - drag.startWorld.y,
       };
-      const delta = shiftKey
-        ? rawDelta
-        : {
-            x: Math.round(rawDelta.x / gridSize) * gridSize,
-            y: Math.round(rawDelta.y / gridSize) * gridSize,
-          };
+      const delta = snapWallMoveDelta(rawDelta, shiftKey);
       const isVertex =
         drag.part.startsWith("vertex:") ||
         drag.part === "posA" ||
         drag.part === "posB";
-      const target = isVertex
-        ? snapHvacPoint(world, shiftKey)
-        : add(drag.startWorld, delta);
+      const snapped = isVertex
+        ? snapHvacConnection(world, shiftKey)
+        : { point: add(drag.startWorld, delta) };
+      const target = snapped.point;
       if (!drag.moved) {
         if (!isVertex && delta.x === 0 && delta.y === 0) return;
         checkpoint();
@@ -202,10 +236,28 @@ export function useHvacTool(scale: number): HvacToolApi {
         if (idx < 0) return;
         const el = structuredClone(drag.orig);
         moveHvac(el, drag.part, delta, target, m.walls);
+        if (el.kind === "duct") {
+          if (drag.part === "body") {
+            delete el.startConnection;
+            delete el.endConnection;
+          } else if (drag.part.startsWith("vertex:")) {
+            const vertex = Number(drag.part.slice(7));
+            if (vertex === 0) {
+              if (snapped.connection)
+                el.startConnection = { ...snapped.connection };
+              else delete el.startConnection;
+            }
+            if (vertex === el.points.length - 1) {
+              if (snapped.connection)
+                el.endConnection = { ...snapped.connection };
+              else delete el.endConnection;
+            }
+          }
+        }
         m.hvac[idx] = el;
       });
     },
-    [gridSize, checkpoint, updateModel, snapHvacPoint],
+    [checkpoint, updateModel, snapHvacConnection],
   );
 
   return { placeAt, selectAt, applyDrag, snapHvacPoint };

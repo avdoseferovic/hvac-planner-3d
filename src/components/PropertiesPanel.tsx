@@ -27,6 +27,10 @@ import type {
 import { HvacProps } from "./panels/HvacProps";
 import { NumField } from "./panels/NumField";
 import { ProjectProps } from "./panels/ProjectProps";
+import {
+  applyWallMove,
+  captureWallMove,
+} from "../wall-connections";
 
 function WallProps({ wall }: { wall: Wall }) {
   const t = useT();
@@ -36,6 +40,15 @@ function WallProps({ wall }: { wall: Wall }) {
     commit((m) => {
       const w = m.walls.find((x) => x.id === wall.id);
       if (w) fn(w);
+    });
+  const center = {
+    x: (wall.a.x + wall.b.x) / 2,
+    y: (wall.a.y + wall.b.y) / 2,
+  };
+  const moveWall = (delta: { x: number; y: number }) =>
+    commit((m) => {
+      const snapshot = captureWallMove(m.walls, wall.id);
+      applyWallMove(m.walls, snapshot, delta);
     });
 
   return (
@@ -63,6 +76,18 @@ function WallProps({ wall }: { wall: Wall }) {
           })
         }
       />
+      <NumField
+        label={t("props.centerX")}
+        value={center.x}
+        min={-100_000}
+        onCommit={(value) => moveWall({ x: value - center.x, y: 0 })}
+      />
+      <NumField
+        label={t("props.centerY")}
+        value={center.y}
+        min={-100_000}
+        onCommit={(value) => moveWall({ x: 0, y: value - center.y })}
+      />
       <label className="field checkbox">
         <input
           type="checkbox"
@@ -76,6 +101,7 @@ function WallProps({ wall }: { wall: Wall }) {
         <span>{t("props.loadBearing")}</span>
       </label>
       <div className="prop-readout">{formatLength(wallLength(wall))}</div>
+      <div className="prop-help">{t("hint.wallMovePrecision")}</div>
     </div>
   );
 }
@@ -109,6 +135,37 @@ function WallToolProps() {
           {t("props.interiorThickness")} — {settings.interiorWallThickness} cm
         </span>
       </label>
+    </div>
+  );
+}
+
+function DuctToolProps() {
+  const t = useT();
+  const mode = useStore((s) => s.ductRoutingMode);
+  const setMode = useStore((s) => s.setDuctRoutingMode);
+
+  return (
+    <div className="prop-section" data-testid="duct-routing-props">
+      <h3>{t("hvac.routingTitle")}</h3>
+      <div className="segmented-control">
+        <button
+          className={mode === "orthogonal" ? "active" : ""}
+          onClick={() => setMode("orthogonal")}
+          aria-pressed={mode === "orthogonal"}
+          data-testid="duct-routing-orthogonal"
+        >
+          {t("hvac.routingOrthogonal")}
+        </button>
+        <button
+          className={mode === "direct" ? "active" : ""}
+          onClick={() => setMode("direct")}
+          aria-pressed={mode === "direct"}
+          data-testid="duct-routing-direct"
+        >
+          {t("hvac.routingDirect")}
+        </button>
+      </div>
+      <div className="prop-help">{t("hvac.routingHelp")}</div>
     </div>
   );
 }
@@ -308,12 +365,13 @@ export function PropertiesPanel() {
     <aside className="props-panel" data-testid="props-panel">
       <h2>{t("props.title")}</h2>
       {tool === "wall" && <WallToolProps />}
+      {tool === "duct" && <DuctToolProps />}
       {selection.length > 1 && <GroupProps selection={selection} />}
       {selectedWall && <WallProps wall={selectedWall} />}
       {selectedOpening && <OpeningProps opening={selectedOpening} />}
       {selectedRoom && <RoomProps room={selectedRoom} />}
       {selectedHvac && <HvacProps el={selectedHvac} />}
-      {!hasSelection && tool !== "wall" && (
+      {!hasSelection && tool !== "wall" && tool !== "duct" && (
         <p className="muted">{t("props.noSelection")}</p>
       )}
       <ProjectProps />

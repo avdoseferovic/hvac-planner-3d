@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  add,
   closestT,
   dist,
   pointInPolygon,
@@ -32,6 +31,17 @@ import { capturePointer, releasePointer } from "./pointer-capture";
 import { useHvacTool, type HvacDrag } from "./useHvacTool";
 import { useModifierKeys } from "./useModifierKeys";
 import { useSpacePan } from "./useSpacePan";
+import {
+  applyEndpointMove,
+  applyWallMove,
+  captureEndpointMove,
+  captureWallMove,
+  isWallConnectionPoint,
+  snapWallMoveDelta,
+  type EndpointMoveSnapshot,
+  type WallMoveSnapshot,
+} from "../../wall-connections";
+import { previewDuctRoute } from "../../duct-drafting";
 
 type DragState =
   | { kind: "pan"; startClient: Point; startCamera: Camera }
@@ -39,11 +49,17 @@ type DragState =
       kind: "moveWall";
       wallId: string;
       startWorld: Point;
-      orig: Wall;
+      snapshot: WallMoveSnapshot;
       moved: boolean;
     }
   | MoveMultiDrag
-  | { kind: "endpoint"; wallId: string; end: "a" | "b"; moved: boolean }
+  | {
+      kind: "endpoint";
+      wallId: string;
+      end: "a" | "b";
+      snapshot: EndpointMoveSnapshot;
+      moved: boolean;
+    }
   | { kind: "moveOpening"; openingId: string; moved: boolean }
   | HvacDrag;
 
@@ -72,6 +88,7 @@ export interface EditorTools {
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
+  onPointerLeave: () => void;
   onDoubleClick: () => void;
   startEndpointDrag: (
     wallId: string,
@@ -102,6 +119,7 @@ export function useEditorTools(
   const setDraftAnchor = useStore((s) => s.setDraftAnchor);
   const draftPath = useStore((s) => s.draftPath);
   const wallDraftKind = useStore((s) => s.wallDraftKind);
+  const ductRoutingMode = useStore((s) => s.ductRoutingMode);
   const commit = useStore((s) => s.commit);
   const checkpoint = useStore((s) => s.checkpoint);
   const updateModel = useStore((s) => s.updateModel);
@@ -136,6 +154,24 @@ export function useEditorTools(
         gridSize,
       ),
     [model.walls, camera.scale, gridSize],
+  );
+
+  const snapEndpointPoint = useCallback(
+    (
+      raw: Point,
+      other: Point,
+      movingWallIds: ReadonlySet<string>,
+      mods: SnapMods,
+    ): Point =>
+      snapDraftPoint(
+        raw,
+        other,
+        mods,
+        model.walls.filter((wall) => !movingWallIds.has(wall.id)),
+        12 / camera.scale,
+        1,
+      ),
+    [model.walls, camera.scale],
   );
 
   const snapWallPoint = useCallback(
@@ -201,6 +237,7 @@ export function useEditorTools(
           setDraftAnchor(p);
         } else if (dist(draftAnchor, p) >= 1) {
           const anchor = draftAnchor;
+          const closesChain = isWallConnectionPoint(p, model.walls);
           commit((m) => {
             m.walls.push({
               id: nextId("wall"),
@@ -210,7 +247,7 @@ export function useEditorTools(
               loadBearing: wallDraftKind === "exterior",
             });
           });
-          setDraftAnchor(p);
+          setDraftAnchor(closesChain ? null : p);
         }
         return;
       }
@@ -303,7 +340,7 @@ export function useEditorTools(
               kind: "moveWall",
               wallId: wall.id,
               startWorld: world,
-              orig: structuredClone(wall),
+              snapshot: captureWallMove(st.model.walls, wall.id),
               moved: false,
             };
           }
@@ -345,22 +382,14 @@ export function useEditorTools(
         x: world.x - drag.startWorld.x,
         y: world.y - drag.startWorld.y,
       };
-      const delta = e.shiftKey
-        ? rawDelta
-        : {
-            x: Math.round(rawDelta.x / gridSize) * gridSize,
-            y: Math.round(rawDelta.y / gridSize) * gridSize,
-          };
+      const delta = snapWallMoveDelta(rawDelta, e.shiftKey);
       if (!drag.moved) {
         if (delta.x === 0 && delta.y === 0) return;
         checkpoint();
         drag.moved = true;
       }
       updateModel((m) => {
-        const w = m.walls.find((x) => x.id === drag.wallId);
-        if (!w) return;
-        w.a = add(drag.orig.a, delta);
-        w.b = add(drag.orig.b, delta);
+        applyWallMove(m.walls, drag.snapshot, delta);
       });
       return;
     }
@@ -370,12 +399,7 @@ export function useEditorTools(
         x: world.x - drag.startWorld.x,
         y: world.y - drag.startWorld.y,
       };
-      const delta = e.shiftKey
-        ? rawDelta
-        : {
-            x: Math.round(rawDelta.x / gridSize) * gridSize,
-            y: Math.round(rawDelta.y / gridSize) * gridSize,
-          };
+      const delta = snapWallMoveDelta(rawDelta, e.shiftKey);
       if (!drag.moved) {
         if (delta.x === 0 && delta.y === 0) return;
         checkpoint();
@@ -392,17 +416,21 @@ export function useEditorTools(
       const wall = model.walls.find((w) => w.id === drag.wallId);
       if (!wall) return;
       const other = drag.end === "a" ? wall.b : wall.a;
-      const p = snapPoint(world, other, {
-        free: e.altKey,
-        fine: e.shiftKey,
-      });
+      const p = snapEndpointPoint(
+        world,
+        other,
+        new Set(drag.snapshot.endpoints.map((endpoint) => endpoint.wallId)),
+        {
+          free: e.altKey,
+          fine: e.shiftKey,
+        },
+      );
       if (!drag.moved) {
         checkpoint();
         drag.moved = true;
       }
       updateModel((m) => {
-        const w = m.walls.find((x) => x.id === drag.wallId);
-        if (w) w[drag.end] = p;
+        applyEndpointMove(m.walls, drag.snapshot, p);
       });
       return;
     }
@@ -437,6 +465,10 @@ export function useEditorTools(
     setPanning(false);
   };
 
+  const onPointerLeave = () => {
+    if (!dragRef.current) setMouse(null);
+  };
+
   const onDoubleClick = () => {
     if (tool === "wall") setDraftAnchor(null);
     if (tool === "duct") commitDuctDraft();
@@ -446,7 +478,17 @@ export function useEditorTools(
     (wallId: string, end: "a" | "b") => (e: React.PointerEvent) => {
       e.stopPropagation();
       capturePointer(svgRef.current, e.pointerId);
-      dragRef.current = { kind: "endpoint", wallId, end, moved: false };
+      dragRef.current = {
+        kind: "endpoint",
+        wallId,
+        end,
+        snapshot: captureEndpointMove(
+          useStore.getState().model.walls,
+          wallId,
+          end,
+        ),
+        moved: false,
+      };
     };
 
   // ---- overlays ----
@@ -502,7 +544,11 @@ export function useEditorTools(
   const ductPreview =
     tool === "duct" && draftPath.length > 0
       ? snappedCursor
-        ? [...draftPath, snappedCursor]
+        ? previewDuctRoute(
+            draftPath,
+            snappedCursor,
+            shift ? "direct" : ductRoutingMode,
+          )
         : draftPath
       : null;
   const jumperFirst = tool === "jumperDuct" ? draftAnchor : null;
@@ -527,6 +573,7 @@ export function useEditorTools(
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onPointerLeave,
     onDoubleClick,
     startEndpointDrag,
   };

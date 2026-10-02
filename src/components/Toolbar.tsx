@@ -218,12 +218,16 @@ function ToolButton({ def }: { def: ToolDef }) {
   const t = useT();
   const tool = useStore((s) => s.tool);
   const setTool = useStore((s) => s.setTool);
+  const label = def.shortcut
+    ? `${t(def.labelKey)} (${def.shortcut})`
+    : t(def.labelKey);
   return (
     <button
       className={`toolbtn ${tool === def.tool ? "active" : ""}`}
-      title={
-        def.shortcut ? `${t(def.labelKey)} (${def.shortcut})` : t(def.labelKey)
-      }
+      title={label}
+      aria-label={label}
+      aria-pressed={tool === def.tool}
+      data-tooltip={label}
       onClick={() => setTool(def.tool)}
       data-testid={`tool-${def.tool}`}
     >
@@ -256,6 +260,9 @@ export function Toolbar() {
       <button
         className={`toolbtn ${showHvac ? "active" : ""}`}
         title={t("view.hvacLayer")}
+        aria-label={t("view.hvacLayer")}
+        aria-pressed={showHvac}
+        data-tooltip={t("view.hvacLayer")}
         onClick={() => setShowHvac(!showHvac)}
         data-testid="toggle-hvac"
       >
@@ -264,6 +271,9 @@ export function Toolbar() {
       <button
         className={`toolbtn ${showKeepOut ? "active" : ""}`}
         title={t("view.keepOut")}
+        aria-label={t("view.keepOut")}
+        aria-pressed={showKeepOut}
+        data-tooltip={t("view.keepOut")}
         onClick={() => setShowKeepOut(!showKeepOut)}
         data-testid="toggle-keepout"
       >
@@ -272,6 +282,9 @@ export function Toolbar() {
       <button
         className={`toolbtn ${showSchedule ? "active" : ""}`}
         title={t("schedule.title")}
+        aria-label={t("schedule.title")}
+        aria-pressed={showSchedule}
+        data-tooltip={t("schedule.title")}
         onClick={() => setShowSchedule(!showSchedule)}
         data-testid="toggle-schedule"
       >

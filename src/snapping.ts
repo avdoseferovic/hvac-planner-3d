@@ -54,9 +54,9 @@ export function snapDraftPoint(
   endpointTolerance: number,
   gridSize: number,
 ): Point {
+  if (mods.free) return raw;
   const ep = snapToEndpoints(raw, walls, endpointTolerance);
   if (ep) return ep;
-  if (mods.free) return raw;
 
   let p: Point;
   if (from) {

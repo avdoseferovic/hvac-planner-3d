@@ -66,6 +66,8 @@ const en = {
   "props.thickness": "Thickness (cm)",
   "props.loadBearing": "Load-bearing",
   "props.length": "Length (cm)",
+  "props.centerX": "Center X (cm)",
+  "props.centerY": "Center Y (cm)",
   "props.wallHeight": "Wall height (cm)",
   "props.slabThickness": "Slab thickness (cm)",
   "props.atticHeight": "Attic height (cm)",
@@ -85,9 +87,32 @@ const en = {
   "hvac.drillDiameter": "Core drill Ø (mm)",
   "hvac.insulated": "Insulated",
   "hvac.heightAboveFloor": "Height above floor (cm)",
+  "hvac.connectedRoutes": "connected routes",
+  "hvac.routeStart": "Route start",
+  "hvac.routeEnd": "Route end",
+  "hvac.unconnected": "Open end",
+  "hvac.portCenter": "center",
+  "hvac.portLeft": "left port",
+  "hvac.portRight": "right port",
+  "hvac.portTop": "top port",
+  "hvac.portBottom": "bottom port",
+  "hvac.portA": "port A",
+  "hvac.portB": "port B",
+  "hvac.routingTitle": "Duct routing",
+  "hvac.routingOrthogonal": "Smart 90°",
+  "hvac.routingDirect": "Direct",
+  "hvac.routingHelp":
+    "Smart routing inserts clean 90° elbows automatically. Hold Shift for one direct, free segment.",
+  "hvac.routingShiftDirect": "Hold Shift for a direct segment",
+  "hvac.routingTemporaryDirect": "Shift override · release for Smart 90°",
+  "hvac.routingDirectActive": "Every segment follows your clicks",
   "hint.hvacPlace": "Click to place · Esc = cancel",
   "hint.duct":
     "Click points along the route · Enter/double-click = finish · Esc = cancel",
+  "hint.ductSmart":
+    "Click equipment or endpoints · 90° elbows are automatic · Shift = direct/free segment · Enter = finish",
+  "hint.ductDirect":
+    "Click direct route points · endpoints still bind to ports · Enter = finish",
   "hint.jumper": "Click room-side hole, then hallway-side hole",
   "hint.facade": "Click on an exterior wall",
 
@@ -125,10 +150,19 @@ const en = {
   // status bar
   "status.walls": "walls",
   "status.rooms": "rooms",
+  "status.structureReady": "Structure connected",
+  "status.openEnds": "open wall ends",
+  "status.wallMovePrecision": "1 cm movement · Shift for fine control",
+  "status.routesConnected": "routes connected",
+  "status.routeOpenEnds": "open route ends",
+  "status.join": "JOIN",
+  "status.connectPort": "CONNECT",
   "hint.wall":
-    "Click to place wall points · measured endpoints snap to wall starts · Shift = straight, no grid · Alt = free angle · Enter/double-click = finish · Esc = cancel",
+    "Click wall points · existing walls magnetically connect and finish the chain · Shift = fine straight · Alt = free · Esc = cancel",
   "hint.select":
-    "Click to select · Shift+click = multi-select · drag to move · Delete = remove",
+    "Select/drag · Shift+click = multi-select · Arrow = 1 cm · Shift+Arrow = 10 cm · Alt+Arrow = 0.1 cm · Delete = remove",
+  "hint.wallMovePrecision":
+    "Drag in 1 cm steps · Shift = fine movement · Alt on a handle = fully free · Arrow keys nudge precisely",
   "hint.opening": "Hover a wall, click to place · Esc = cancel",
   "hint.measure":
     "Click two points to measure · Snaps to wall edges · Alt = free · Esc = cancel",
@@ -210,6 +244,8 @@ const bs: Record<TranslationKey, string> = {
   "props.thickness": "Debljina (cm)",
   "props.loadBearing": "Nosivi zid",
   "props.length": "Dužina (cm)",
+  "props.centerX": "Centar X (cm)",
+  "props.centerY": "Centar Y (cm)",
   "props.wallHeight": "Visina zida (cm)",
   "props.slabThickness": "Debljina ploče (cm)",
   "props.atticHeight": "Visina tavana (cm)",
@@ -228,9 +264,32 @@ const bs: Record<TranslationKey, string> = {
   "hvac.drillDiameter": "Bušenje Ø (mm)",
   "hvac.insulated": "Izolovan",
   "hvac.heightAboveFloor": "Visina od poda (cm)",
+  "hvac.connectedRoutes": "povezanih trasa",
+  "hvac.routeStart": "Početak trase",
+  "hvac.routeEnd": "Kraj trase",
+  "hvac.unconnected": "Otvoren kraj",
+  "hvac.portCenter": "centar",
+  "hvac.portLeft": "lijevi priključak",
+  "hvac.portRight": "desni priključak",
+  "hvac.portTop": "gornji priključak",
+  "hvac.portBottom": "donji priključak",
+  "hvac.portA": "priključak A",
+  "hvac.portB": "priključak B",
+  "hvac.routingTitle": "Vođenje kanala",
+  "hvac.routingOrthogonal": "Pametno 90°",
+  "hvac.routingDirect": "Direktno",
+  "hvac.routingHelp":
+    "Pametno vođenje automatski dodaje čista koljena od 90°. Drži Shift za jedan direktan, slobodan segment.",
+  "hvac.routingShiftDirect": "Drži Shift za direktan segment",
+  "hvac.routingTemporaryDirect": "Shift način · pusti za Pametno 90°",
+  "hvac.routingDirectActive": "Svaki segment prati tvoje klikove",
   "hint.hvacPlace": "Klik za postavljanje · Esc = odustani",
   "hint.duct":
     "Klikći tačke duž trase · Enter/dupli klik = završi · Esc = odustani",
+  "hint.ductSmart":
+    "Klikni opremu ili krajeve · koljena 90° su automatska · Shift = direktan/slobodan segment · Enter = završi",
+  "hint.ductDirect":
+    "Klikći direktne tačke trase · krajevi se i dalje vežu za priključke · Enter = završi",
   "hint.jumper": "Klikni rupu u sobi, zatim rupu u hodniku",
   "hint.facade": "Klikni na vanjski zid",
 
@@ -265,10 +324,19 @@ const bs: Record<TranslationKey, string> = {
 
   "status.walls": "zidova",
   "status.rooms": "prostorija",
+  "status.structureReady": "Konstrukcija povezana",
+  "status.openEnds": "otvorenih krajeva zidova",
+  "status.wallMovePrecision": "Pomjeranje 1 cm · Shift za precizno",
+  "status.routesConnected": "povezanih trasa",
+  "status.routeOpenEnds": "otvorenih krajeva trase",
+  "status.join": "SPOJI",
+  "status.connectPort": "POVEŽI",
   "hint.wall":
-    "Klik za tačke zida · krajnje tačke mjerenja se hvataju pri početku zida · Shift = pravo, bez mreže · Alt = slobodan ugao · Enter/dupli klik = završi · Esc = odustani",
+    "Klikći tačke zida · postojeći zidovi se magnetski spajaju i završavaju lanac · Shift = precizno pravo · Alt = slobodno · Esc = odustani",
   "hint.select":
-    "Klik za odabir · Shift+klik = više objekata · povuci za pomjeranje · Delete = obriši",
+    "Odabir/povlačenje · Shift+klik = višestruki odabir · Strelica = 1 cm · Shift+strelica = 10 cm · Alt+strelica = 0,1 cm · Delete = obriši",
+  "hint.wallMovePrecision":
+    "Povlačenje u koracima od 1 cm · Shift = precizno · Alt na ručki = potpuno slobodno · strelice za tačno pomjeranje",
   "hint.opening":
     "Pređi mišem preko zida, klik za postavljanje · Esc = odustani",
   "hint.measure":
