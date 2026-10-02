@@ -1,8 +1,11 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import "./App.css";
 import { deleteSelection } from "./actions";
 import { downloadProject, pickAndLoadProject } from "./persistence";
 import { Editor2D } from "./components/Editor2D";
+const View3D = lazy(() =>
+  import("./components/View3D").then((m) => ({ default: m.View3D })),
+);
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { StatusBar } from "./components/StatusBar";
 import { Toolbar } from "./components/Toolbar";
@@ -23,7 +26,7 @@ const TOOL_KEYS: Record<string, Tool> = {
 
 /** Tools that are implemented so far (grows per milestone). */
 const ENABLED_TOOLS: Tool[] = ["select", "wall", "door", "window", "measure"];
-const VIEW_3D_ENABLED = false; // milestone 3
+const VIEW_3D_ENABLED = true;
 
 export default function App() {
   const t = useT();
@@ -31,6 +34,8 @@ export default function App() {
   const redo = useStore((s) => s.redo);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
+  const viewMode = useStore((s) => s.viewMode);
+  const setViewMode = useStore((s) => s.setViewMode);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -83,6 +88,20 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <h1>HVAC Planner 3D</h1>
+        <div className="view-switch" title={`${t("view.toggle")} (V)`}>
+          <button
+            className={viewMode === "2d" ? "active" : ""}
+            onClick={() => setViewMode("2d")}
+          >
+            {t("view.2d")}
+          </button>
+          <button
+            className={viewMode === "3d" ? "active" : ""}
+            onClick={() => setViewMode("3d")}
+          >
+            {t("view.3d")}
+          </button>
+        </div>
         <div className="topbar-actions">
           <button
             onClick={undo}
@@ -117,7 +136,13 @@ export default function App() {
       </header>
       <div className="main">
         <Toolbar />
-        <Editor2D />
+        {viewMode === "2d" ? (
+          <Editor2D />
+        ) : (
+          <Suspense fallback={<div className="view3d" />}>
+            <View3D />
+          </Suspense>
+        )}
         <PropertiesPanel />
       </div>
       <StatusBar />

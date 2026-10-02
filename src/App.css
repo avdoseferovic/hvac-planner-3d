@@ -223,3 +223,63 @@
 .statusbar .spacer {
   flex: 1;
 }
+
+/* ---------- view switch & 3D ---------- */
+.view-switch {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-switch button {
+  border: none;
+  background: var(--panel);
+  color: var(--muted);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.view-switch button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.view3d {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.view3d-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.view3d-overlay button {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.view3d-overlay button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.view3d-overlay .field {
+  margin-bottom: 0;
+}
