@@ -13,10 +13,11 @@ import {
   isGroupable,
   selectionGroupId,
 } from "../grouping";
-import { clampOpeningT } from "../openings";
+import { applyDoorKind, clampOpeningT } from "../openings";
 import { nextId, useStore, useT } from "../store";
 import { useRooms } from "../useRooms";
 import type {
+  DoorKind,
   DoorHinge,
   DoorSwing,
   Opening,
@@ -210,54 +211,115 @@ function OpeningProps({ opening }: { opening: Opening }) {
         }
       />
       {opening.type === "window" && (
-        <NumField
-          label={t("props.sill")}
-          value={opening.sill}
-          min={0}
-          onCommit={(v) =>
-            setOpening((o) => {
-              o.sill = v;
-            })
-          }
-        />
+        <>
+          <NumField
+            label={t("props.sill")}
+            value={opening.sill}
+            min={0}
+            onCommit={(v) =>
+              setOpening((o) => {
+                o.sill = v;
+              })
+            }
+          />
+          <label className="field">
+            <span>{t("sizing.windowOverride")}</span>
+            <select
+              value={opening.glazing ?? "project"}
+              onChange={(event) => {
+                const glazing = event.target.value as NonNullable<
+                  Opening["glazing"]
+                >;
+                setOpening((o) => {
+                  o.glazing = glazing;
+                  if (glazing === "project") {
+                    delete o.uValue;
+                    delete o.shgc;
+                  } else {
+                    const values = {
+                      single: { uValue: 5.7, shgc: 0.75 },
+                      double: { uValue: 1.4, shgc: 0.5 },
+                      triple: { uValue: 0.9, shgc: 0.42 },
+                    }[glazing];
+                    o.uValue = values.uValue;
+                    o.shgc = values.shgc;
+                  }
+                });
+                event.currentTarget.blur();
+              }}
+              data-testid="window-glazing"
+            >
+              <option value="project">{t("sizing.windowProject")}</option>
+              <option value="single">{t("sizing.single")}</option>
+              <option value="double">{t("sizing.double")}</option>
+              <option value="triple">{t("sizing.triple")}</option>
+            </select>
+          </label>
+        </>
       )}
       {opening.type === "door" && (
         <>
           <label className="field">
-            <span>{t("props.hinge")}</span>
+            <span>{t("props.doorType")}</span>
             <select
-              value={opening.hinge ?? "left"}
+              value={opening.doorKind ?? "swing"}
               onChange={(e) => {
-                const v = e.target.value as DoorHinge;
-                setOpening((o) => {
-                  o.hinge = v;
-                });
+                const kind = e.target.value as DoorKind;
+                if (wall) {
+                  setOpening((o) => applyDoorKind(o, wall, kind));
+                }
                 e.currentTarget.blur();
               }}
-              data-testid="door-hinge"
+              data-testid="door-kind"
             >
-              <option value="left">{t("props.hingeLeft")}</option>
-              <option value="right">{t("props.hingeRight")}</option>
+              <option value="swing">{t("door.swing")}</option>
+              <option value="garageRoller">{t("door.garageRoller")}</option>
             </select>
           </label>
-          <label className="field">
-            <span>{t("props.swing")}</span>
-            <select
-              value={opening.swing ?? "in"}
-              onChange={(e) => {
-                const v = e.target.value as DoorSwing;
-                setOpening((o) => {
-                  o.swing = v;
-                });
-                e.currentTarget.blur();
-              }}
-              data-testid="door-swing"
-            >
-              <option value="in">{t("props.swingIn")}</option>
-              <option value="out">{t("props.swingOut")}</option>
-            </select>
-          </label>
+          {(opening.doorKind ?? "swing") === "swing" ? (
+            <>
+              <label className="field">
+                <span>{t("props.hinge")}</span>
+                <select
+                  value={opening.hinge ?? "left"}
+                  onChange={(e) => {
+                    const v = e.target.value as DoorHinge;
+                    setOpening((o) => {
+                      o.hinge = v;
+                    });
+                    e.currentTarget.blur();
+                  }}
+                  data-testid="door-hinge"
+                >
+                  <option value="left">{t("props.hingeLeft")}</option>
+                  <option value="right">{t("props.hingeRight")}</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>{t("props.swing")}</span>
+                <select
+                  value={opening.swing ?? "in"}
+                  onChange={(e) => {
+                    const v = e.target.value as DoorSwing;
+                    setOpening((o) => {
+                      o.swing = v;
+                    });
+                    e.currentTarget.blur();
+                  }}
+                  data-testid="door-swing"
+                >
+                  <option value="in">{t("props.swingIn")}</option>
+                  <option value="out">{t("props.swingOut")}</option>
+                </select>
+              </label>
+            </>
+          ) : (
+            <div className="prop-help">{t("hint.garageRoller")}</div>
+          )}
         </>
+      )}
+      {opening.type === "window" && (
+        <div className="prop-help">{t("hint.windowResize")}</div>
       )}
       {wall && (
         <div className="prop-readout">
@@ -271,6 +333,9 @@ function OpeningProps({ opening }: { opening: Opening }) {
 function RoomProps({ room }: { room: Room }) {
   const t = useT();
   const commit = useStore((s) => s.commit);
+  const conditioned = useStore(
+    (s) => s.model.roomConditioning?.[room.key] !== false,
+  );
 
   return (
     <div className="prop-section">
@@ -290,6 +355,24 @@ function RoomProps({ room }: { room: Room }) {
       <div className="prop-readout">
         {t("props.area")}: {formatArea(room.area)}
       </div>
+      <label className="field checkbox">
+        <input
+          type="checkbox"
+          checked={conditioned}
+          onChange={(event) =>
+            commit((m) => {
+              m.roomConditioning ??= {};
+              if (event.target.checked) {
+                delete m.roomConditioning[room.key];
+              } else {
+                m.roomConditioning[room.key] = false;
+              }
+            })
+          }
+          data-testid="room-conditioned"
+        />
+        <span>{t("props.conditioned")}</span>
+      </label>
     </div>
   );
 }

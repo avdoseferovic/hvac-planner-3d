@@ -7,6 +7,7 @@ import {
 } from "../schedule";
 import { useStore, useT } from "../store";
 import { useRooms } from "../useRooms";
+import { modelForStory } from "../stories";
 import type { TranslationKey } from "../i18n";
 
 const KIND_KEYS: Record<string, TranslationKey> = {
@@ -20,7 +21,12 @@ const KIND_KEYS: Record<string, TranslationKey> = {
 
 export function SchedulePanel() {
   const t = useT();
-  const model = useStore((s) => s.model);
+  const fullModel = useStore((s) => s.model);
+  const activeStoryId = useStore((s) => s.activeStoryId);
+  const model = useMemo(
+    () => modelForStory(fullModel, activeStoryId),
+    [fullModel, activeStoryId],
+  );
   const setShowSchedule = useStore((s) => s.setShowSchedule);
   const rooms = useRooms();
   const [tab, setTab] = useState<"penetrations" | "airflow">("penetrations");

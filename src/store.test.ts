@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { nextId, useStore } from './store'
 import { emptyModel } from './types'
+import { addClonedStory } from './stories'
 
 const addWall = (x: number) =>
   useStore.getState().commit((m) => {
@@ -64,6 +65,23 @@ describe('store history', () => {
     })
     useStore.getState().undo()
     expect(useStore.getState().model.walls[0].thickness).toBe(25)
+  })
+
+  it('tracks story visibility independently and recovers the active story on undo', () => {
+    const ground = useStore.getState().activeStoryId
+    useStore.getState().commit((model) => {
+      addClonedStory(model, ground, { id: 'upper', name: 'Upper floor' })
+    })
+    useStore.getState().setActiveStoryId('upper')
+    useStore.getState().setStoryVisible('upper', true)
+    expect(useStore.getState().visibleStoryIds).toContain('upper')
+
+    useStore.getState().setStoryVisible('upper', false)
+    expect(useStore.getState().visibleStoryIds).not.toContain('upper')
+
+    useStore.getState().undo()
+    expect(useStore.getState().activeStoryId).toBe(ground)
+    expect(useStore.getState().model.stories).toHaveLength(1)
   })
 })
 

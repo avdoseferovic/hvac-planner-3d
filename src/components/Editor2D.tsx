@@ -11,7 +11,9 @@ import {
   resolveDuctConnection,
 } from "../hvac";
 import { penetrationSchedule, proximityWarnings } from "../schedule";
+import { openingEdgePoints } from "../openings";
 import { useStore, useT } from "../store";
+import { modelForStory } from "../stories";
 import { useRooms } from "../useRooms";
 import type { Point } from "../types";
 import { analyzeWallStructure } from "../wall-connections";
@@ -42,7 +44,12 @@ export function Editor2D() {
     rotation: 0,
   });
 
-  const model = useStore((s) => s.model);
+  const fullModel = useStore((s) => s.model);
+  const activeStoryId = useStore((s) => s.activeStoryId);
+  const model = useMemo(
+    () => modelForStory(fullModel, activeStoryId),
+    [fullModel, activeStoryId],
+  );
   const tool = useStore((s) => s.tool);
   const selection = useStore((s) => s.selection);
   const showHvac = useStore((s) => s.showHvac);
@@ -97,7 +104,15 @@ export function Editor2D() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [clientToWorld]);
 
-  const tools = useEditorTools(camera, setCamera, clientToWorld, svgRef, rooms);
+  const tools = useEditorTools(
+    camera,
+    setCamera,
+    clientToWorld,
+    svgRef,
+    rooms,
+    model,
+    activeStoryId,
+  );
 
   const warnings = useMemo(() => {
     if (!showHvac) return [];
@@ -144,6 +159,20 @@ export function Editor2D() {
     selection.length === 1 && selection[0].type === "wall"
       ? model.walls.find((w) => w.id === selection[0].id)
       : undefined;
+  const selectedWindow =
+    selection.length === 1 && selection[0].type === "opening"
+      ? model.openings.find(
+          (opening) =>
+            opening.id === selection[0].id && opening.type === "window",
+        )
+      : undefined;
+  const selectedWindowWall = selectedWindow
+    ? model.walls.find((wall) => wall.id === selectedWindow.wallId)
+    : undefined;
+  const selectedWindowEdges =
+    selectedWindow && selectedWindowWall
+      ? openingEdgePoints(selectedWindowWall, selectedWindow)
+      : null;
   const px = (n: number) => n / camera.scale;
   const cursor = tools.panning
     ? "grabbing"
@@ -517,6 +546,25 @@ export function Editor2D() {
                 strokeWidth={px(2)}
                 style={{ cursor: "move" }}
                 onPointerDown={tools.startEndpointDrag(selectedWall.id, end)}
+              />
+            ))}
+          {selectedWindow &&
+            selectedWindowEdges &&
+            (["a", "b"] as const).map((edge) => (
+              <circle
+                key={`window-${edge}`}
+                cx={selectedWindowEdges[edge].x}
+                cy={selectedWindowEdges[edge].y}
+                r={px(6)}
+                fill="#fff"
+                stroke="#2563eb"
+                strokeWidth={px(2)}
+                style={{ cursor: "move" }}
+                data-testid={`window-resize-${edge}`}
+                onPointerDown={tools.startWindowResize(
+                  selectedWindow.id,
+                  edge,
+                )}
               />
             ))}
         </g>

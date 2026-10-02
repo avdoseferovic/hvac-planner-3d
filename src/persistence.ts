@@ -1,6 +1,12 @@
-import { DEFAULT_SETTINGS, emptyModel, type Model } from "./types";
+import { normalizeStories } from "./stories";
+import {
+  DEFAULT_SETTINGS,
+  DEFAULT_THERMAL_SETTINGS,
+  emptyModel,
+  type Model,
+} from "./types";
 
-const FILE_VERSION = 1;
+const FILE_VERSION = 2;
 
 export interface ProjectFile {
   app: "hvac-planner-3d";
@@ -33,7 +39,9 @@ export function deserializeProject(json: string): Model {
   }
   const m = file.model as Partial<Model>;
   const base = emptyModel();
-  return {
+  const hadExplicitStories = Array.isArray(m.stories) && m.stories.length > 0;
+  const model: Model = {
+    stories: Array.isArray(m.stories) ? m.stories : base.stories,
     walls: Array.isArray(m.walls) ? m.walls : base.walls,
     openings: Array.isArray(m.openings) ? m.openings : base.openings,
     hvac: Array.isArray(m.hvac) ? m.hvac : base.hvac,
@@ -41,8 +49,21 @@ export function deserializeProject(json: string): Model {
       m.roomNames && typeof m.roomNames === "object"
         ? m.roomNames
         : base.roomNames,
+    roomConditioning:
+      m.roomConditioning && typeof m.roomConditioning === "object"
+        ? m.roomConditioning
+        : base.roomConditioning,
     settings: { ...DEFAULT_SETTINGS, ...(m.settings ?? {}) },
+    thermal: {
+      ...DEFAULT_THERMAL_SETTINGS,
+      ...(m.thermal ?? {}),
+      envelope: {
+        ...DEFAULT_THERMAL_SETTINGS.envelope,
+        ...(m.thermal?.envelope ?? {}),
+      },
+    },
   };
+  return hadExplicitStories ? model : normalizeStories(model);
 }
 
 /** Trigger a browser download of the current project. */

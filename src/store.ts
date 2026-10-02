@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { translate, type Lang, type TranslationKey } from "./i18n";
 import {
+  DEFAULT_STORY_ID,
   emptyModel,
   type Model,
   type Point,
@@ -8,6 +9,7 @@ import {
   type Tool,
   type ViewMode,
 } from "./types";
+import { normalizeStories } from "./stories";
 import type { DuctRoutingMode } from "./duct-drafting";
 
 export type WallDraftKind = "exterior" | "interior";
@@ -34,8 +36,12 @@ export interface StoreState {
   lang: Lang;
   showHvac: boolean;
   showKeepOut: boolean;
-  hideRoof: boolean;
-  hideSlab: boolean;
+  showRoof: boolean;
+  showSlabs: boolean;
+  activeStoryId: string;
+  visibleStoryIds: string[];
+  /** focused heat-pump / AC load drawer */
+  showSizing: boolean;
   /** bottom schedule drawer */
   showSchedule: boolean;
   /** current chain-start point while drawing walls (null = no draft) */
@@ -54,8 +60,11 @@ export interface StoreState {
   setLang: (lang: Lang) => void;
   setShowHvac: (v: boolean) => void;
   setShowKeepOut: (v: boolean) => void;
-  setHideRoof: (v: boolean) => void;
-  setHideSlab: (v: boolean) => void;
+  setShowRoof: (v: boolean) => void;
+  setShowSlabs: (v: boolean) => void;
+  setActiveStoryId: (id: string) => void;
+  setStoryVisible: (id: string, visible: boolean) => void;
+  setShowSizing: (v: boolean) => void;
   setShowSchedule: (v: boolean) => void;
   setDraftAnchor: (p: Point | null) => void;
   setDraftPath: (pts: Point[]) => void;
@@ -85,8 +94,11 @@ export const useStore = create<StoreState>((set, get) => ({
   lang: "bs",
   showHvac: true,
   showKeepOut: false,
-  hideRoof: false,
-  hideSlab: false,
+  showRoof: true,
+  showSlabs: true,
+  activeStoryId: DEFAULT_STORY_ID,
+  visibleStoryIds: [DEFAULT_STORY_ID],
+  showSizing: false,
   showSchedule: false,
   draftAnchor: null,
   draftPath: [],
@@ -100,8 +112,22 @@ export const useStore = create<StoreState>((set, get) => ({
   setLang: (lang) => set({ lang }),
   setShowHvac: (showHvac) => set({ showHvac }),
   setShowKeepOut: (showKeepOut) => set({ showKeepOut }),
-  setHideRoof: (hideRoof) => set({ hideRoof }),
-  setHideSlab: (hideSlab) => set({ hideSlab }),
+  setShowRoof: (showRoof) => set({ showRoof }),
+  setShowSlabs: (showSlabs) => set({ showSlabs }),
+  setActiveStoryId: (activeStoryId) =>
+    set({
+      activeStoryId,
+      selection: [],
+      draftAnchor: null,
+      draftPath: [],
+    }),
+  setStoryVisible: (id, visible) =>
+    set((state) => ({
+      visibleStoryIds: visible
+        ? [...new Set([...state.visibleStoryIds, id])]
+        : state.visibleStoryIds.filter((storyId) => storyId !== id),
+    })),
+  setShowSizing: (showSizing) => set({ showSizing }),
   setShowSchedule: (showSchedule) => set({ showSchedule }),
   setDraftAnchor: (draftAnchor) => set({ draftAnchor }),
   setDraftPath: (draftPath) => set({ draftPath }),
@@ -134,38 +160,58 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   undo: () => {
-    const { past, future, model } = get();
+    const { past, future, model, activeStoryId, visibleStoryIds } = get();
     if (past.length === 0) return;
     const prev = past[past.length - 1];
+    const storyIds = new Set(prev.stories.map((story) => story.id));
     set({
       model: prev,
       past: past.slice(0, -1),
       future: [model, ...future].slice(0, HISTORY_LIMIT),
       selection: [],
+      activeStoryId: storyIds.has(activeStoryId)
+        ? activeStoryId
+        : (prev.stories[0]?.id ?? DEFAULT_STORY_ID),
+      visibleStoryIds: visibleStoryIds.filter((id) => storyIds.has(id)),
     });
   },
 
   redo: () => {
-    const { past, future, model } = get();
+    const { past, future, model, activeStoryId, visibleStoryIds } = get();
     if (future.length === 0) return;
     const next = future[0];
+    const storyIds = new Set(next.stories.map((story) => story.id));
     set({
       model: next,
       past: [...past.slice(-HISTORY_LIMIT), model],
       future: future.slice(1),
       selection: [],
+      activeStoryId: storyIds.has(activeStoryId)
+        ? activeStoryId
+        : (next.stories[0]?.id ?? DEFAULT_STORY_ID),
+      visibleStoryIds: [
+        ...new Set([
+          ...visibleStoryIds.filter((id) => storyIds.has(id)),
+          next.stories[0]?.id ?? DEFAULT_STORY_ID,
+        ]),
+      ],
     });
   },
 
-  replaceModel: (m) =>
+  replaceModel: (m) => {
+    const model = normalizeStories(structuredClone(m));
+    const ids = model.stories.map((story) => story.id);
     set({
-      model: m,
+      model,
       past: [],
       future: [],
       selection: [],
       draftAnchor: null,
       draftPath: [],
-    }),
+      activeStoryId: ids[0] ?? DEFAULT_STORY_ID,
+      visibleStoryIds: ids,
+    });
+  },
 }));
 
 /** Translation hook: `const t = useT(); t('tool.wall')` */

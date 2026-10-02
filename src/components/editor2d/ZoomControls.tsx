@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { fitCamera, rotateCamera, zoomAt, type Camera } from "../../camera";
 import { isTextEntryTarget } from "../../dom";
 import { useStore, useT } from "../../store";
+import { modelForStory } from "../../stories";
 
 interface Props {
   camera: Camera;
@@ -17,8 +18,9 @@ export function ZoomControls({ camera, setCamera, width, height }: Props) {
   const t = useT();
 
   const fit = useCallback(() => {
+    const state = useStore.getState();
     const c = fitCamera(
-      useStore.getState().model,
+      modelForStory(state.model, state.activeStoryId),
       width,
       height,
       undefined,

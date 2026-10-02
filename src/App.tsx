@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import "./App.css";
 import {
   commitDuctDraft,
@@ -20,8 +20,11 @@ const View3D = lazy(() =>
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { SchedulePanel } from "./components/SchedulePanel";
 import { StatusBar } from "./components/StatusBar";
+import { StoryBar } from "./components/StoryBar";
+import { SizingPanel } from "./components/SizingPanel";
 import { Toolbar } from "./components/Toolbar";
 import { nextId, useStore, useT } from "./store";
+import { calculateHeatLoads } from "./thermal-load";
 import type { Tool } from "./types";
 
 const TOOL_KEYS: Record<string, Tool> = {
@@ -90,6 +93,12 @@ const topIcons = {
       <path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
     </svg>
   ),
+  sizing: (
+    <svg viewBox="0 0 24 24" {...iconStroke}>
+      <path d="M12 3v18M7.5 5.5l9 13M16.5 5.5l-9 13" />
+      <path d="M4 9h16M4 15h16" />
+    </svg>
+  ),
 };
 
 export default function App() {
@@ -101,6 +110,10 @@ export default function App() {
   const viewMode = useStore((s) => s.viewMode);
   const setViewMode = useStore((s) => s.setViewMode);
   const showSchedule = useStore((s) => s.showSchedule);
+  const showSizing = useStore((s) => s.showSizing);
+  const setShowSizing = useStore((s) => s.setShowSizing);
+  const model = useStore((s) => s.model);
+  const heatLoad = useMemo(() => calculateHeatLoads(model), [model]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -205,23 +218,36 @@ export default function App() {
             {t("view.3d")}
           </button>
         </div>
+        <StoryBar />
+        <button
+          className={`sizing-trigger ${showSizing ? "active" : ""}`}
+          onClick={() => setShowSizing(!showSizing)}
+          aria-pressed={showSizing}
+          data-testid="toggle-sizing"
+        >
+          {topIcons.sizing}
+          <span>{t("sizing.open")}</span>
+          {heatLoad.rooms.length > 0 && (
+            <strong>{heatLoad.recommendedCapacityKw.toFixed(1)} kW</strong>
+          )}
+        </button>
         <div className="topbar-actions">
           <button
             onClick={undo}
             disabled={!canUndo}
             title={`${t("action.undo")} (Ctrl+Z)`}
           >
-            {topIcons.undo} {t("action.undo")}
+            {topIcons.undo} <span>{t("action.undo")}</span>
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
             title={`${t("action.redo")} (Ctrl+Shift+Z)`}
           >
-            {topIcons.redo} {t("action.redo")}
+            {topIcons.redo} <span>{t("action.redo")}</span>
           </button>
           <button onClick={() => downloadProject(useStore.getState().model)}>
-            {topIcons.save} {t("action.save")}
+            {topIcons.save} <span>{t("action.save")}</span>
           </button>
           <button
             onClick={async () => {
@@ -233,7 +259,7 @@ export default function App() {
               }
             }}
           >
-            {topIcons.load} {t("action.load")}
+            {topIcons.load} <span>{t("action.load")}</span>
           </button>
         </div>
       </header>
@@ -249,6 +275,7 @@ export default function App() {
         <PropertiesPanel />
       </div>
       {showSchedule && <SchedulePanel />}
+      {showSizing && <SizingPanel />}
       <StatusBar />
     </div>
   );

@@ -20,11 +20,24 @@ import {
   pickSelection,
   type MoveMultiDrag,
 } from "./selectTool";
-import { clampOpeningT, findWallNear, placeOpening } from "../../openings";
+import {
+  clampOpeningT,
+  findWallNear,
+  placeOpening,
+  resizeOpeningEdge,
+} from "../../openings";
 import { cutWallSegment } from "../../wall-cut";
 import { commitDuctDraft } from "../../actions";
 import { nextId, useStore } from "../../store";
-import type { Opening, Point, Room, Selection, Tool, Wall } from "../../types";
+import type {
+  Model,
+  Opening,
+  Point,
+  Room,
+  Selection,
+  Tool,
+  Wall,
+} from "../../types";
 import type { Camera } from "./GridLayer";
 import { screenOffsetToWorld } from "../../camera";
 import { capturePointer, releasePointer } from "./pointer-capture";
@@ -61,6 +74,13 @@ type DragState =
       moved: boolean;
     }
   | { kind: "moveOpening"; openingId: string; moved: boolean }
+  | {
+      kind: "resizeWindow";
+      openingId: string;
+      edge: "a" | "b";
+      original: Pick<Opening, "t" | "width">;
+      moved: boolean;
+    }
   | HvacDrag;
 
 export interface MeasureState {
@@ -94,6 +114,10 @@ export interface EditorTools {
     wallId: string,
     end: "a" | "b",
   ) => (e: React.PointerEvent) => void;
+  startWindowResize: (
+    openingId: string,
+    edge: "a" | "b",
+  ) => (e: React.PointerEvent) => void;
 }
 
 export function useEditorTools(
@@ -102,6 +126,8 @@ export function useEditorTools(
   clientToWorld: (x: number, y: number) => Point,
   svgRef: React.RefObject<SVGSVGElement | null>,
   rooms: Room[],
+  model: Model,
+  activeStoryId: string,
 ): EditorTools {
   const dragRef = useRef<DragState | null>(null);
   /** wall + position of the first cut-tool click */
@@ -112,7 +138,6 @@ export function useEditorTools(
   const { shift, alt } = useModifierKeys();
   const spacePan = useSpacePan();
 
-  const model = useStore((s) => s.model);
   const tool = useStore((s) => s.tool);
   const setSelection = useStore((s) => s.setSelection);
   const draftAnchor = useStore((s) => s.draftAnchor);
@@ -125,7 +150,7 @@ export function useEditorTools(
   const updateModel = useStore((s) => s.updateModel);
 
   const { gridSize } = model.settings;
-  const hvacApi = useHvacTool(camera.scale);
+  const hvacApi = useHvacTool(camera.scale, model, activeStoryId);
   const draftThickness =
     wallDraftKind === "exterior"
       ? model.settings.exteriorWallThickness
@@ -241,6 +266,7 @@ export function useEditorTools(
           commit((m) => {
             m.walls.push({
               id: nextId("wall"),
+              storyId: activeStoryId,
               a: anchor,
               b: p,
               thickness: draftThickness,
@@ -340,7 +366,7 @@ export function useEditorTools(
               kind: "moveWall",
               wallId: wall.id,
               startWorld: world,
-              snapshot: captureWallMove(st.model.walls, wall.id),
+            snapshot: captureWallMove(model.walls, wall.id),
               moved: false,
             };
           }
@@ -456,6 +482,36 @@ export function useEditorTools(
         const o = m.openings.find((x) => x.id === drag.openingId);
         if (o) o.t = t;
       });
+      return;
+    }
+
+    if (drag.kind === "resizeWindow") {
+      const opening = model.openings.find((o) => o.id === drag.openingId);
+      const wall = opening && model.walls.find((w) => w.id === opening.wallId);
+      if (!opening || !wall || opening.type !== "window") return;
+      const resized = resizeOpeningEdge(
+        wall,
+        drag.original,
+        drag.edge,
+        world,
+        e.shiftKey || e.altKey ? 0 : 1,
+      );
+      if (!drag.moved) {
+        if (
+          resized.t === drag.original.t &&
+          resized.width === drag.original.width
+        ) {
+          return;
+        }
+        checkpoint();
+        drag.moved = true;
+      }
+      updateModel((m) => {
+        const target = m.openings.find((o) => o.id === drag.openingId);
+        if (!target || target.type !== "window") return;
+        target.t = resized.t;
+        target.width = resized.width;
+      });
     }
   };
 
@@ -483,10 +539,29 @@ export function useEditorTools(
         wallId,
         end,
         snapshot: captureEndpointMove(
-          useStore.getState().model.walls,
+          model.walls,
           wallId,
           end,
         ),
+        moved: false,
+      };
+    };
+
+  const startWindowResize =
+    (openingId: string, edge: "a" | "b") =>
+    (e: React.PointerEvent) => {
+      const opening = model.openings.find(
+        (candidate) =>
+          candidate.id === openingId && candidate.type === "window",
+      );
+      if (!opening) return;
+      e.stopPropagation();
+      capturePointer(svgRef.current, e.pointerId);
+      dragRef.current = {
+        kind: "resizeWindow",
+        openingId,
+        edge,
+        original: { t: opening.t, width: opening.width },
         moved: false,
       };
     };
@@ -524,6 +599,7 @@ export function useEditorTools(
     dist(draftAnchor, snappedCursor) >= 1
       ? {
           id: "__draft",
+          storyId: activeStoryId,
           a: draftAnchor,
           b: snappedCursor,
           thickness: draftThickness,
@@ -576,5 +652,6 @@ export function useEditorTools(
     onPointerLeave,
     onDoubleClick,
     startEndpointDrag,
+    startWindowResize,
   };
 }

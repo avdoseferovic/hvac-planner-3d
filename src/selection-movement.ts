@@ -1,5 +1,6 @@
 import { add, distToSegment } from "./geometry";
 import { translateSelection } from "./grouping";
+import { storyIdOf } from "./stories";
 import type { Model, Point, Selection } from "./types";
 import { WALL_JOINT_TOLERANCE, type WallEnd } from "./wall-connections";
 
@@ -27,10 +28,14 @@ export function moveSelectionPreservingJoints(
   const selectedWalls = model.walls.filter((wall) =>
     selectedWallIds.has(wall.id),
   );
+  const selectedStoryIds = new Set(
+    selectedWalls.map((wall) => storyIdOf(wall, model)),
+  );
   const attached = new Map<string, AttachedEndpoint>();
 
   for (const wall of model.walls) {
     if (selectedWallIds.has(wall.id)) continue;
+    if (!selectedStoryIds.has(storyIdOf(wall, model))) continue;
     for (const end of ["a", "b"] as const) {
       if (
         selectedWalls.some(

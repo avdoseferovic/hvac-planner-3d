@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { facadePos, mm } from "../../hvac";
+import { HVAC_COLORS } from "../../hvac-colors";
 import { buildDuctRoute3D } from "../../hvac-routing";
 import { normalize, perp, sub } from "../../geometry";
 import { useStore } from "../../store";
-import { HVAC_COLORS } from "../editor2d/HvacLayer";
 import type {
   Duct,
   HvacElement,
@@ -149,10 +149,16 @@ function Penetration({
   );
 }
 
-/** 3D representation of the HVAC layer. */
-export function Hvac3D() {
-  const hvac = useStore((s) => s.model.hvac);
-  const walls = useStore((s) => s.model.walls);
+/** 3D representation of one story's HVAC layer. */
+export function Hvac3D({
+  hvac,
+  walls,
+  elevation = 0,
+}: {
+  hvac: HvacElement[];
+  walls: Wall[];
+  elevation?: number;
+}) {
   const settings = useStore((s) => s.model.settings);
   const showHvac = useStore((s) => s.showHvac);
 
@@ -163,7 +169,7 @@ export function Hvac3D() {
   const slabTopY = ceilingY + slabT;
 
   return (
-    <group>
+    <group position={[0, elevation * M, 0]}>
       {hvac.map((el) => {
         switch (el.kind) {
           case "acUnit":

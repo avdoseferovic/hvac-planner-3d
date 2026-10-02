@@ -1,9 +1,9 @@
 # HVAC Planner 3D
 
-A SketchUp-style web tool for planning ducted AC and heat-recovery ventilation
-(HRV/rekuperator) in a residential attic. Draw the floor plan in 2D, inspect the
-same model in 3D, plan the HVAC layer, and export a penetration schedule for the
-core-drilling crew.
+A SketchUp-style web tool for planning residential heat pumps, ducted AC, and
+heat-recovery ventilation (HRV/rekuperator). Draw each floor in 2D, inspect the
+multi-story house in 3D, estimate room-by-room heating/cooling loads, plan the
+HVAC layer, and export a penetration schedule for the core-drilling crew.
 
 Everything runs locally in the browser — no backend, no account. Projects are
 saved to a JSON file you download and load back.
@@ -20,13 +20,19 @@ npx vitest run     # unit tests
 ## Concepts
 
 - **One model, two views.** All drawing/editing happens in the **2D plan**; the
-  **3D view** (walls, slab, semi-transparent attic, HVAC) is a synchronized,
-  read-mostly visualization.
+  **3D view** (walls, openings, floor slabs, pitched roof, HVAC) is a
+  synchronized, read-mostly visualization.
 - **Units.** The internal model is centimeters; the UI shows cm and m.
   Diameters (connection Ø / drill Ø) are millimeters, as printed on the plan
   (e.g. `Ø270`).
 - **Rooms** are auto-detected from closed wall loops; name them in the
   properties panel. Areas are net (walls subtracted).
+- **Stories** are real model levels. The `+` button duplicates the active floor
+  outline into a new upper floor; choose a floor to edit it and use its eye
+  button to independently show/hide it in 3D.
+- **Heat-pump / AC sizing** uses the drawn envelope instead of an area
+  rule-of-thumb: exterior wall area, per-window geometry/glazing, roof/floor
+  exposure, air leakage, design temperatures, occupants, and solar gain.
 - **HVAC layer** is toggleable and visible in both views. Every ceiling
   penetration shows its core-drill diameter; drill Ø defaults to
   connection Ø + 20 mm and can be overridden.
@@ -61,7 +67,8 @@ health cards and endpoint markers call out open wall or duct ends. Selected
 ducts expose their elbow points, while bound ends continue following moved or
 rotated equipment. Mouse (3D):
 left-drag orbit, right-drag pan, wheel zoom, preset cameras Top / Isometric /
-Front, toggles to hide the attic volume and slab.
+Front, plus positive buttons for the pitched roof and floor slabs. Story eye
+buttons isolate individual levels without deleting them.
 
 Toolbar toggles at the bottom: HVAC layer, keep-out zones, penetration schedule.
 
@@ -83,6 +90,25 @@ Grid size (default 5 cm), wall height (280 cm), slab thickness (20 cm), attic
 height (250 cm), default exterior/interior wall thickness (25/14 cm), keep-out
 width and UI language (Bosnian default, English available) — all in the right
 panel.
+
+## Heat-pump / AC sizing
+
+Open **Size heat pump** in the top bar. The simple path is:
+
+1. Choose Basic, Standard, or High-performance insulation.
+2. Choose the default window glazing.
+3. Read the heating design load, cooling design load, standard equipment step,
+   and room-by-room breakdown.
+
+Window selections can be overridden individually from a selected window's
+properties. Design indoor/outdoor temperatures, plan north (for directional
+solar gain), occupancy, U-values, and air changes per hour are available in
+collapsed fine-tuning sections.
+
+The calculator is a transparent early-design estimate, not a permit/stamped
+load calculation. Confirm local design weather, humidity/latent load,
+ventilation and duct assumptions, equipment derating, and final selection with
+a qualified HVAC designer.
 
 ## Tech
 

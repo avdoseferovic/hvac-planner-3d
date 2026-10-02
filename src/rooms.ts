@@ -173,6 +173,12 @@ export function detectRooms(
       area: Math.max(0, area),
       centroid: polygonCentroid(poly),
       wallIds,
+      boundaries: face.map((he) => ({
+        wallId: he.wallId,
+        a: { ...nodes[he.from].p },
+        b: { ...nodes[he.to].p },
+        thickness: he.thickness,
+      })),
     });
   }
 

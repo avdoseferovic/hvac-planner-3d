@@ -7,9 +7,20 @@ import {
   scale,
   wallDirection,
 } from "./geometry";
-import type { Opening, OpeningType, Point, Wall } from "./types";
+import type {
+  DoorKind,
+  Opening,
+  OpeningType,
+  Point,
+  Wall,
+} from "./types";
 
 export const DOOR_DEFAULTS = { width: 90, height: 205, sill: 0 };
+export const GARAGE_ROLLER_DEFAULTS = {
+  width: 300,
+  height: 240,
+  sill: 0,
+};
 export const WINDOW_DEFAULTS = { width: 120, height: 130, sill: 90 };
 
 /** Clamp opening center position so the whole opening stays inside the wall. */
@@ -35,9 +46,85 @@ export function placeOpening(
   return { type, t, ...defaults };
 }
 
+/** Apply practical dimensions when converting between hinged and roller doors. */
+export function applyDoorKind(
+  opening: Opening,
+  wall: Wall,
+  kind: DoorKind,
+): void {
+  const defaults =
+    kind === "garageRoller" ? GARAGE_ROLLER_DEFAULTS : DOOR_DEFAULTS;
+  const wallLen = dist(wall.a, wall.b);
+  opening.doorKind = kind;
+  opening.width = Math.min(defaults.width, wallLen);
+  opening.height = defaults.height;
+  opening.sill = defaults.sill;
+  opening.t = clampOpeningT(wall, opening.width, opening.t);
+}
+
 /** Center point of an opening in plan coordinates. */
 export function openingCenter(wall: Wall, opening: Opening): Point {
   return lerp(wall.a, wall.b, opening.t);
+}
+
+/** The opening jamb centers, ordered from wall endpoint a toward b. */
+export function openingEdgePoints(
+  wall: Wall,
+  opening: Pick<Opening, "t" | "width">,
+): { a: Point; b: Point } {
+  const wallLen = dist(wall.a, wall.b);
+  if (wallLen === 0) return { a: { ...wall.a }, b: { ...wall.a } };
+  const halfT = opening.width / 2 / wallLen;
+  return {
+    a: lerp(wall.a, wall.b, opening.t - halfT),
+    b: lerp(wall.a, wall.b, opening.t + halfT),
+  };
+}
+
+/**
+ * Resize one opening jamb while preserving the other jamb in world space.
+ * Cursor projection is constrained to the host wall, then snapped along it.
+ */
+export function resizeOpeningEdge(
+  wall: Wall,
+  opening: Pick<Opening, "t" | "width">,
+  edge: "a" | "b",
+  cursor: Point,
+  snapIncrement = 1,
+  minimumWidth = 20,
+): Pick<Opening, "t" | "width"> {
+  const wallLen = dist(wall.a, wall.b);
+  if (wallLen === 0) return { t: 0.5, width: 0 };
+
+  const center = opening.t * wallLen;
+  const originalA = Math.max(0, center - opening.width / 2);
+  const originalB = Math.min(wallLen, center + opening.width / 2);
+  const projected = closestT(wall.a, wall.b, cursor) * wallLen;
+
+  let a = originalA;
+  let b = originalB;
+  if (edge === "a") {
+    const minWidth = Math.min(minimumWidth, originalB);
+    const rawWidth = originalB - projected;
+    const width =
+      snapIncrement > 0
+        ? Math.round(rawWidth / snapIncrement) * snapIncrement
+        : rawWidth;
+    a = originalB - Math.min(originalB, Math.max(minWidth, width));
+  } else {
+    const minWidth = Math.min(minimumWidth, wallLen - originalA);
+    const rawWidth = projected - originalA;
+    const width =
+      snapIncrement > 0
+        ? Math.round(rawWidth / snapIncrement) * snapIncrement
+        : rawWidth;
+    b = originalA + Math.min(wallLen - originalA, Math.max(minWidth, width));
+  }
+
+  return {
+    t: (a + b) / 2 / wallLen,
+    width: b - a,
+  };
 }
 
 /** The 4 corners of the opening cut (a rectangle spanning the wall thickness). */

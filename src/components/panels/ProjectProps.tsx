@@ -1,4 +1,5 @@
 import { useStore, useT } from "../../store";
+import type { ProjectSettings, RoofType } from "../../types";
 import { NumField } from "./NumField";
 
 /** Global project settings section. */
@@ -9,9 +10,12 @@ export function ProjectProps() {
   const lang = useStore((s) => s.lang);
   const setLang = useStore((s) => s.setLang);
 
-  const setSetting = (key: keyof typeof settings, v: number) =>
+  const setSetting = <K extends keyof ProjectSettings>(
+    key: K,
+    value: ProjectSettings[K],
+  ) =>
     commit((m) => {
-      m.settings[key] = v;
+      m.settings[key] = value;
     });
 
   return (
@@ -34,12 +38,29 @@ export function ProjectProps() {
         min={5}
         onCommit={(v) => setSetting("slabThickness", v)}
       />
-      <NumField
-        label={t("props.atticHeight")}
-        value={settings.atticHeight}
-        min={50}
-        onCommit={(v) => setSetting("atticHeight", v)}
-      />
+      <label className="field roof-type-field">
+        <span>{t("props.roofType")}</span>
+        <select
+          data-testid="roof-type"
+          value={settings.roofType}
+          onChange={(event) => {
+            setSetting("roofType", event.target.value as RoofType);
+            event.currentTarget.blur();
+          }}
+        >
+          <option value="pitched">{t("roof.pitched")}</option>
+          <option value="flat">{t("roof.flat")}</option>
+          <option value="metalFlat">{t("roof.metalFlat")}</option>
+        </select>
+      </label>
+      {settings.roofType === "pitched" && (
+        <NumField
+          label={t("props.atticHeight")}
+          value={settings.atticHeight}
+          min={50}
+          onCommit={(v) => setSetting("atticHeight", v)}
+        />
+      )}
       <NumField
         label={t("props.exteriorThickness")}
         value={settings.exteriorWallThickness}

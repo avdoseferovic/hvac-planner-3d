@@ -13,6 +13,7 @@ const settings: ProjectSettings = {
   wallHeight: 280,
   slabThickness: 20,
   atticHeight: 250,
+  roofType: "pitched",
   exteriorWallThickness: 25,
   interiorWallThickness: 14,
   keepOutWidth: 60,

@@ -2,17 +2,26 @@ import { makeDuct } from "./hvac-factories";
 import { connectDuctEndpoints } from "./hvac";
 import { simplifyDuctRoute } from "./duct-drafting";
 import { moveSelectionPreservingJoints } from "./selection-movement";
+import { modelForStory } from "./stories";
 import { useStore } from "./store";
 import type { Point, Selection } from "./types";
 
 /** Commit the in-progress duct polyline (>= 2 points) and clear the draft. */
 export function commitDuctDraft(): void {
-  const { draftPath, commit, setDraftPath, setSelection } = useStore.getState();
+  const {
+    draftPath,
+    activeStoryId,
+    commit,
+    setDraftPath,
+    setSelection,
+  } = useStore.getState();
   const route = simplifyDuctRoute(draftPath);
   if (route.length >= 2) {
     const duct = makeDuct(route);
+    duct.storyId = activeStoryId;
     commit((m) => {
-      connectDuctEndpoints(duct, m.hvac, m.walls);
+      const story = modelForStory(m, activeStoryId);
+      connectDuctEndpoints(duct, story.hvac, story.walls);
       m.hvac.push(duct);
     });
     setSelection([{ type: "hvac", id: duct.id }]);

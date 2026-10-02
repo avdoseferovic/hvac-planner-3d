@@ -22,6 +22,7 @@ import { useStore } from "../../store";
 import type {
   DuctConnection,
   HvacElement,
+  Model,
   Point,
   Tool,
 } from "../../types";
@@ -47,8 +48,11 @@ export interface HvacToolApi {
   snapHvacPoint: (raw: Point, free: boolean) => Point;
 }
 
-export function useHvacTool(scale: number): HvacToolApi {
-  const model = useStore((s) => s.model);
+export function useHvacTool(
+  scale: number,
+  model: Model,
+  activeStoryId: string,
+): HvacToolApi {
   const showHvac = useStore((s) => s.showHvac);
   const setSelection = useStore((s) => s.setSelection);
   const draftAnchor = useStore((s) => s.draftAnchor);
@@ -100,12 +104,13 @@ export function useHvacTool(scale: number): HvacToolApi {
 
   const pushElement = useCallback(
     (el: HvacElement) => {
+      el.storyId = activeStoryId;
       commit((m) => {
         m.hvac.push(el);
       });
       setSelection([{ type: "hvac", id: el.id }]);
     },
-    [commit, setSelection],
+    [activeStoryId, commit, setSelection],
   );
 
   const placeAt = useCallback(

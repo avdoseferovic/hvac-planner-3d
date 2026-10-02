@@ -1,11 +1,14 @@
 import { useStore, useT } from "../store";
 import { useRooms } from "../useRooms";
+import { modelForStory } from "../stories";
 
 export function StatusBar() {
   const t = useT();
   const tool = useStore((s) => s.tool);
   const ductRoutingMode = useStore((s) => s.ductRoutingMode);
-  const wallCount = useStore((s) => s.model.walls.length);
+  const model = useStore((s) => s.model);
+  const activeStoryId = useStore((s) => s.activeStoryId);
+  const wallCount = modelForStory(model, activeStoryId).walls.length;
   const rooms = useRooms();
 
   const hint =
