@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import "./App.css";
 import { deleteSelection } from "./actions";
+import { downloadProject, pickAndLoadProject } from "./persistence";
 import { Editor2D } from "./components/Editor2D";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { StatusBar } from "./components/StatusBar";
@@ -21,7 +22,7 @@ const TOOL_KEYS: Record<string, Tool> = {
 };
 
 /** Tools that are implemented so far (grows per milestone). */
-const ENABLED_TOOLS: Tool[] = ["select", "wall"];
+const ENABLED_TOOLS: Tool[] = ["select", "wall", "door", "window", "measure"];
 const VIEW_3D_ENABLED = false; // milestone 3
 
 export default function App() {
@@ -96,6 +97,21 @@ export default function App() {
             title={`${t("action.redo")} (Ctrl+Shift+Z)`}
           >
             ⟳ {t("action.redo")}
+          </button>
+          <button onClick={() => downloadProject(useStore.getState().model)}>
+            ⤓ {t("action.save")}
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const m = await pickAndLoadProject();
+                if (m) useStore.getState().replaceModel(m);
+              } catch {
+                alert("Invalid project file / Neispravan fajl projekta");
+              }
+            }}
+          >
+            ⤒ {t("action.load")}
           </button>
         </div>
       </header>

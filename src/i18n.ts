@@ -57,12 +57,24 @@ const en = {
   "props.interiorThickness": "Interior wall (cm)",
   "props.language": "Language",
 
+  // openings & rooms
+  "props.door": "Door",
+  "props.window": "Window",
+  "props.width": "Width (cm)",
+  "props.height": "Height (cm)",
+  "props.sill": "Sill height (cm)",
+  "props.room": "Room",
+  "props.roomName": "Name",
+  "props.area": "Area",
+
   // status bar
   "status.walls": "walls",
   "status.rooms": "rooms",
   "hint.wall":
     "Click to place wall points · Shift = free angle · Enter/double-click = finish · Esc = cancel",
   "hint.select": "Click to select · drag to move · Delete = remove",
+  "hint.opening": "Hover a wall, click to place · Esc = cancel",
+  "hint.measure": "Click two points to measure · Esc = cancel",
 
   // units
   "unit.cm": "cm",
@@ -124,11 +136,23 @@ const bs: Record<TranslationKey, string> = {
   "props.interiorThickness": "Unutrašnji zid (cm)",
   "props.language": "Jezik",
 
+  "props.door": "Vrata",
+  "props.window": "Prozor",
+  "props.width": "Širina (cm)",
+  "props.height": "Visina (cm)",
+  "props.sill": "Visina parapeta (cm)",
+  "props.room": "Prostorija",
+  "props.roomName": "Naziv",
+  "props.area": "Površina",
+
   "status.walls": "zidova",
   "status.rooms": "prostorija",
   "hint.wall":
     "Klik za tačke zida · Shift = slobodan ugao · Enter/dupli klik = završi · Esc = odustani",
   "hint.select": "Klik za odabir · povuci za pomjeranje · Delete = obriši",
+  "hint.opening":
+    "Pređi mišem preko zida, klik za postavljanje · Esc = odustani",
+  "hint.measure": "Klikni dvije tačke za mjerenje · Esc = odustani",
 
   "unit.cm": "cm",
   "unit.m": "m",

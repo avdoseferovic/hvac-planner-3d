@@ -86,21 +86,21 @@ export function Toolbar() {
       labelKey: "tool.door",
       shortcut: "D",
       icon: icons.door,
-      enabled: false,
+      enabled: true,
     },
     {
       tool: "window",
       labelKey: "tool.window",
       shortcut: "N",
       icon: icons.window,
-      enabled: false,
+      enabled: true,
     },
     {
       tool: "measure",
       labelKey: "tool.measure",
       shortcut: "M",
       icon: icons.measure,
-      enabled: false,
+      enabled: true,
     },
   ];
 

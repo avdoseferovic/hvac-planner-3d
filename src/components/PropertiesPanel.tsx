@@ -1,4 +1,5 @@
 import {
+  formatArea,
   formatLength,
   normalize,
   scale as vScale,
@@ -6,39 +7,12 @@ import {
   add,
   wallLength,
 } from "../geometry";
+import { clampOpeningT } from "../openings";
 import { useStore, useT } from "../store";
-import type { Wall } from "../types";
-
-/** Numeric input that commits on change; keeps the model in cm. */
-function NumField({
-  label,
-  value,
-  onCommit,
-  min = 1,
-  step = 1,
-}: {
-  label: string;
-  value: number;
-  onCommit: (v: number) => void;
-  min?: number;
-  step?: number;
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        type="number"
-        value={Math.round(value * 100) / 100}
-        min={min}
-        step={step}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (Number.isFinite(v) && v >= min) onCommit(v);
-        }}
-      />
-    </label>
-  );
-}
+import { useRooms } from "../useRooms";
+import type { Opening, Room, Wall } from "../types";
+import { NumField } from "./panels/NumField";
+import { ProjectProps } from "./panels/ProjectProps";
 
 function WallProps({ wall }: { wall: Wall }) {
   const t = useT();
@@ -92,70 +66,6 @@ function WallProps({ wall }: { wall: Wall }) {
   );
 }
 
-function ProjectProps() {
-  const t = useT();
-  const settings = useStore((s) => s.model.settings);
-  const commit = useStore((s) => s.commit);
-  const lang = useStore((s) => s.lang);
-  const setLang = useStore((s) => s.setLang);
-
-  const setSetting = (key: keyof typeof settings, v: number) =>
-    commit((m) => {
-      m.settings[key] = v;
-    });
-
-  return (
-    <div className="prop-section">
-      <h3>{t("props.project")}</h3>
-      <NumField
-        label={t("props.gridSize")}
-        value={settings.gridSize}
-        onCommit={(v) => setSetting("gridSize", v)}
-      />
-      <NumField
-        label={t("props.wallHeight")}
-        value={settings.wallHeight}
-        min={100}
-        onCommit={(v) => setSetting("wallHeight", v)}
-      />
-      <NumField
-        label={t("props.slabThickness")}
-        value={settings.slabThickness}
-        min={5}
-        onCommit={(v) => setSetting("slabThickness", v)}
-      />
-      <NumField
-        label={t("props.atticHeight")}
-        value={settings.atticHeight}
-        min={50}
-        onCommit={(v) => setSetting("atticHeight", v)}
-      />
-      <NumField
-        label={t("props.exteriorThickness")}
-        value={settings.exteriorWallThickness}
-        min={5}
-        onCommit={(v) => setSetting("exteriorWallThickness", v)}
-      />
-      <NumField
-        label={t("props.interiorThickness")}
-        value={settings.interiorWallThickness}
-        min={5}
-        onCommit={(v) => setSetting("interiorWallThickness", v)}
-      />
-      <label className="field">
-        <span>{t("props.language")}</span>
-        <select
-          value={lang}
-          onChange={(e) => setLang(e.target.value as "bs" | "en")}
-        >
-          <option value="bs">Bosanski</option>
-          <option value="en">English</option>
-        </select>
-      </label>
-    </div>
-  );
-}
-
 function WallToolProps() {
   const t = useT();
   const kind = useStore((s) => s.wallDraftKind);
@@ -189,25 +99,124 @@ function WallToolProps() {
   );
 }
 
+function OpeningProps({ opening }: { opening: Opening }) {
+  const t = useT();
+  const commit = useStore((s) => s.commit);
+  const walls = useStore((s) => s.model.walls);
+  const wall = walls.find((w) => w.id === opening.wallId);
+
+  const setOpening = (fn: (o: Opening) => void) =>
+    commit((m) => {
+      const o = m.openings.find((x) => x.id === opening.id);
+      if (o) {
+        fn(o);
+        const w = m.walls.find((x) => x.id === o.wallId);
+        if (w) o.t = clampOpeningT(w, o.width, o.t);
+      }
+    });
+
+  return (
+    <div className="prop-section">
+      <h3>{opening.type === "door" ? t("props.door") : t("props.window")}</h3>
+      <NumField
+        label={t("props.width")}
+        value={opening.width}
+        min={20}
+        onCommit={(v) =>
+          setOpening((o) => {
+            o.width = v;
+          })
+        }
+      />
+      <NumField
+        label={t("props.height")}
+        value={opening.height}
+        min={20}
+        onCommit={(v) =>
+          setOpening((o) => {
+            o.height = v;
+          })
+        }
+      />
+      {opening.type === "window" && (
+        <NumField
+          label={t("props.sill")}
+          value={opening.sill}
+          min={0}
+          onCommit={(v) =>
+            setOpening((o) => {
+              o.sill = v;
+            })
+          }
+        />
+      )}
+      {wall && (
+        <div className="prop-readout">
+          {t("props.wall")}: {formatLength(wallLength(wall))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RoomProps({ room }: { room: Room }) {
+  const t = useT();
+  const commit = useStore((s) => s.commit);
+
+  return (
+    <div className="prop-section">
+      <h3>{t("props.room")}</h3>
+      <label className="field">
+        <span>{t("props.roomName")}</span>
+        <input
+          type="text"
+          value={room.name}
+          onChange={(e) =>
+            commit((m) => {
+              m.roomNames[room.key] = e.target.value;
+            })
+          }
+        />
+      </label>
+      <div className="prop-readout">
+        {t("props.area")}: {formatArea(room.area)}
+      </div>
+    </div>
+  );
+}
+
 export function PropertiesPanel() {
   const t = useT();
   const selection = useStore((s) => s.selection);
   const tool = useStore((s) => s.tool);
   const walls = useStore((s) => s.model.walls);
+  const openings = useStore((s) => s.model.openings);
+  const rooms = useRooms();
 
   const selectedWall =
     selection?.type === "wall"
       ? walls.find((w) => w.id === selection.id)
       : undefined;
+  const selectedOpening =
+    selection?.type === "opening"
+      ? openings.find((o) => o.id === selection.id)
+      : undefined;
+  const selectedRoom =
+    selection?.type === "room"
+      ? rooms.find((r) => r.key === selection.id)
+      : undefined;
+
+  const hasSelection = selectedWall || selectedOpening || selectedRoom;
 
   return (
     <aside className="props-panel" data-testid="props-panel">
       <h2>{t("props.title")}</h2>
       {tool === "wall" && <WallToolProps />}
-      {selectedWall ? (
-        <WallProps wall={selectedWall} />
-      ) : (
-        tool !== "wall" && <p className="muted">{t("props.noSelection")}</p>
+      {selectedWall && <WallProps wall={selectedWall} />}
+      {selectedOpening && <OpeningProps opening={selectedOpening} />}
+      {selectedRoom && <RoomProps room={selectedRoom} />}
+      {!hasSelection && tool !== "wall" && (
+        <p className="muted">{t("props.noSelection")}</p>
       )}
       <ProjectProps />
     </aside>

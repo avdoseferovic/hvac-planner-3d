@@ -1,37 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  add,
-  dist,
-  distToSegment,
-  formatLength,
-  snapToAxis,
-  snapToEndpoints,
-  snapToGrid,
-  wallPolygonExtended,
-} from "../geometry";
-import { nextId, useStore } from "../store";
-import type { Point, Wall } from "../types";
+import { dist, formatLength, wallPolygonExtended } from "../geometry";
+import { useStore } from "../store";
+import { useRooms } from "../useRooms";
+import type { Point } from "../types";
+import { DimensionsLayer } from "./editor2d/DimensionsLayer";
 import { GridLayer, type Camera } from "./editor2d/GridLayer";
+import { OpeningsLayer } from "./editor2d/OpeningsLayer";
+import { RoomsLayer } from "./editor2d/RoomsLayer";
 import { WallsLayer } from "./editor2d/WallsLayer";
+import { useEditorTools } from "./editor2d/useEditorTools";
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
-type DragState =
-  | { kind: "pan"; startClient: Point; startCamera: Camera }
-  | {
-      kind: "moveWall";
-      wallId: string;
-      startWorld: Point;
-      orig: Wall;
-      moved: boolean;
-    }
-  | { kind: "endpoint"; wallId: string; end: "a" | "b"; moved: boolean };
-
 export function Editor2D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<DragState | null>(null);
 
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [camera, setCamera] = useState<Camera>({
@@ -39,39 +23,23 @@ export function Editor2D() {
     cy: 400,
     scale: 0.7,
   });
-  const [mouse, setMouse] = useState<Point | null>(null);
-  const [shift, setShift] = useState(false);
 
   const model = useStore((s) => s.model);
   const tool = useStore((s) => s.tool);
   const selection = useStore((s) => s.selection);
-  const setSelection = useStore((s) => s.setSelection);
-  const draftAnchor = useStore((s) => s.draftAnchor);
-  const setDraftAnchor = useStore((s) => s.setDraftAnchor);
-  const wallDraftKind = useStore((s) => s.wallDraftKind);
-  const commit = useStore((s) => s.commit);
-  const checkpoint = useStore((s) => s.checkpoint);
-  const updateModel = useStore((s) => s.updateModel);
+  const rooms = useRooms();
 
-  const { gridSize } = model.settings;
-  const draftThickness =
-    wallDraftKind === "exterior"
-      ? model.settings.exteriorWallThickness
-      : model.settings.interiorWallThickness;
-
-  // ---- container size ----
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setSize({ w: el.clientWidth, h: el.clientHeight });
-    });
+    const ro = new ResizeObserver(() =>
+      setSize({ w: el.clientWidth, h: el.clientHeight }),
+    );
     ro.observe(el);
     setSize({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
   }, []);
 
-  // ---- coordinate transforms ----
   const clientToWorld = useCallback(
     (clientX: number, clientY: number, cam: Camera = camera): Point => {
       const rect = containerRef.current!.getBoundingClientRect();
@@ -83,7 +51,7 @@ export function Editor2D() {
     [camera],
   );
 
-  // ---- zoom (native listener so preventDefault works) ----
+  // native wheel listener so preventDefault works
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -102,200 +70,14 @@ export function Editor2D() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [clientToWorld]);
 
-  // ---- shift tracking ----
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => e.key === "Shift" && setShift(true);
-    const up = (e: KeyboardEvent) => e.key === "Shift" && setShift(false);
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, []);
+  const tools = useEditorTools(camera, setCamera, clientToWorld, svgRef, rooms);
 
-  // ---- snapping ----
-  const snapPoint = useCallback(
-    (raw: Point, from: Point | null, free: boolean): Point => {
-      const ep = snapToEndpoints(raw, model.walls, 12 / camera.scale);
-      if (ep) return ep;
-      if (free) return raw;
-      if (from) {
-        const onAxis = snapToAxis(from, raw);
-        if (onAxis.y === from.y) {
-          return { x: Math.round(onAxis.x / gridSize) * gridSize, y: from.y };
-        }
-        return { x: from.x, y: Math.round(onAxis.y / gridSize) * gridSize };
-      }
-      return snapToGrid(raw, gridSize);
-    },
-    [model.walls, camera.scale, gridSize],
-  );
-
-  // ---- hit test ----
-  const hitTestWall = useCallback(
-    (p: Point): Wall | null => {
-      let best: Wall | null = null;
-      let bestD = Infinity;
-      for (const w of model.walls) {
-        const d = distToSegment(p, w.a, w.b);
-        if (d <= w.thickness / 2 + 8 / camera.scale && d < bestD) {
-          bestD = d;
-          best = w;
-        }
-      }
-      return best;
-    },
-    [model.walls, camera.scale],
-  );
-
-  // ---- pointer events ----
-  const onPointerDown = (e: React.PointerEvent) => {
-    const el = svgRef.current!;
-    el.setPointerCapture(e.pointerId);
-    const world = clientToWorld(e.clientX, e.clientY);
-
-    if (e.button === 1 || e.button === 2) {
-      dragRef.current = {
-        kind: "pan",
-        startClient: { x: e.clientX, y: e.clientY },
-        startCamera: { ...camera },
-      };
-      return;
-    }
-    if (e.button !== 0) return;
-
-    if (tool === "wall") {
-      const p = snapPoint(world, draftAnchor, e.shiftKey);
-      if (!draftAnchor) {
-        setDraftAnchor(p);
-      } else if (dist(draftAnchor, p) >= 1) {
-        const anchor = draftAnchor;
-        commit((m) => {
-          m.walls.push({
-            id: nextId("wall"),
-            a: anchor,
-            b: p,
-            thickness: draftThickness,
-            loadBearing: wallDraftKind === "exterior",
-          });
-        });
-        setDraftAnchor(p);
-      }
-      return;
-    }
-
-    if (tool === "select") {
-      const hit = hitTestWall(world);
-      if (hit) {
-        setSelection({ type: "wall", id: hit.id });
-        dragRef.current = {
-          kind: "moveWall",
-          wallId: hit.id,
-          startWorld: world,
-          orig: structuredClone(hit),
-          moved: false,
-        };
-      } else {
-        setSelection(null);
-      }
-    }
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const world = clientToWorld(e.clientX, e.clientY);
-    setMouse(world);
-    const drag = dragRef.current;
-    if (!drag) return;
-
-    if (drag.kind === "pan") {
-      const dx = (e.clientX - drag.startClient.x) / drag.startCamera.scale;
-      const dy = (e.clientY - drag.startClient.y) / drag.startCamera.scale;
-      setCamera({
-        ...drag.startCamera,
-        cx: drag.startCamera.cx - dx,
-        cy: drag.startCamera.cy - dy,
-      });
-      return;
-    }
-
-    if (drag.kind === "moveWall") {
-      const rawDelta = {
-        x: world.x - drag.startWorld.x,
-        y: world.y - drag.startWorld.y,
-      };
-      const delta = e.shiftKey
-        ? rawDelta
-        : {
-            x: Math.round(rawDelta.x / gridSize) * gridSize,
-            y: Math.round(rawDelta.y / gridSize) * gridSize,
-          };
-      if (!drag.moved) {
-        if (delta.x === 0 && delta.y === 0) return;
-        checkpoint();
-        drag.moved = true;
-      }
-      updateModel((m) => {
-        const w = m.walls.find((x) => x.id === drag.wallId);
-        if (!w) return;
-        w.a = add(drag.orig.a, delta);
-        w.b = add(drag.orig.b, delta);
-      });
-      return;
-    }
-
-    if (drag.kind === "endpoint") {
-      const wall = model.walls.find((w) => w.id === drag.wallId);
-      if (!wall) return;
-      const other = drag.end === "a" ? wall.b : wall.a;
-      const p = snapPoint(world, other, e.shiftKey);
-      if (!drag.moved) {
-        checkpoint();
-        drag.moved = true;
-      }
-      updateModel((m) => {
-        const w = m.walls.find((x) => x.id === drag.wallId);
-        if (w) w[drag.end] = p;
-      });
-    }
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    svgRef.current?.releasePointerCapture(e.pointerId);
-    dragRef.current = null;
-  };
-
-  const onDoubleClick = () => {
-    if (tool === "wall") setDraftAnchor(null);
-  };
-
-  const startEndpointDrag =
-    (wallId: string, end: "a" | "b") => (e: React.PointerEvent) => {
-      e.stopPropagation();
-      svgRef.current!.setPointerCapture(e.pointerId);
-      dragRef.current = { kind: "endpoint", wallId, end, moved: false };
-    };
-
-  // ---- render helpers ----
   const viewBox = `${camera.cx - size.w / 2 / camera.scale} ${camera.cy - size.h / 2 / camera.scale} ${size.w / camera.scale} ${size.h / camera.scale}`;
   const selectedWall =
     selection?.type === "wall"
       ? model.walls.find((w) => w.id === selection.id)
       : undefined;
-
-  const snappedCursor =
-    mouse && tool === "wall" ? snapPoint(mouse, draftAnchor, shift) : null;
-
-  const draftWall: Wall | null =
-    draftAnchor && snappedCursor && dist(draftAnchor, snappedCursor) >= 1
-      ? {
-          id: "__draft",
-          a: draftAnchor,
-          b: snappedCursor,
-          thickness: draftThickness,
-          loadBearing: false,
-        }
-      : null;
+  const px = (n: number) => n / camera.scale;
 
   return (
     <div
@@ -309,59 +91,103 @@ export function Editor2D() {
         width={size.w}
         height={size.h}
         viewBox={viewBox}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onDoubleClick={onDoubleClick}
+        onPointerDown={tools.onPointerDown}
+        onPointerMove={tools.onPointerMove}
+        onPointerUp={tools.onPointerUp}
+        onDoubleClick={tools.onDoubleClick}
         style={{
           display: "block",
-          cursor: tool === "wall" ? "crosshair" : "default",
+          cursor: tool === "select" ? "default" : "crosshair",
         }}
       >
         <GridLayer
           camera={camera}
           width={size.w}
           height={size.h}
-          gridSize={gridSize}
+          gridSize={model.settings.gridSize}
+        />
+        <RoomsLayer
+          rooms={rooms}
+          selectedId={selection?.type === "room" ? selection.id : null}
+          scale={camera.scale}
         />
         <WallsLayer
           walls={model.walls}
           selectedId={selection?.type === "wall" ? selection.id : null}
         />
+        <OpeningsLayer
+          walls={model.walls}
+          openings={model.openings}
+          selectedId={selection?.type === "opening" ? selection.id : null}
+          preview={tools.openingPreview}
+        />
+        <DimensionsLayer
+          walls={model.walls}
+          rooms={rooms}
+          scale={camera.scale}
+        />
 
         {/* draft wall preview */}
-        {draftWall && (
+        {tools.draftWall && (
           <g pointerEvents="none">
             <polygon
-              points={wallPolygonExtended(draftWall)
+              points={wallPolygonExtended(tools.draftWall)
                 .map((p) => `${p.x},${p.y}`)
                 .join(" ")}
               fill="#2563eb55"
               stroke="#2563eb"
-              strokeWidth={1 / camera.scale}
-              strokeDasharray={`${6 / camera.scale} ${4 / camera.scale}`}
+              strokeWidth={px(1)}
+              strokeDasharray={`${px(6)} ${px(4)}`}
             />
             <text
-              x={(draftWall.a.x + draftWall.b.x) / 2}
-              y={(draftWall.a.y + draftWall.b.y) / 2 - 10 / camera.scale}
-              fontSize={13 / camera.scale}
+              x={(tools.draftWall.a.x + tools.draftWall.b.x) / 2}
+              y={(tools.draftWall.a.y + tools.draftWall.b.y) / 2 - px(10)}
+              fontSize={px(13)}
               textAnchor="middle"
               fill="#2563eb"
             >
-              {formatLength(dist(draftWall.a, draftWall.b))}
+              {formatLength(dist(tools.draftWall.a, tools.draftWall.b))}
+            </text>
+          </g>
+        )}
+
+        {/* measure overlay */}
+        {tools.measure?.b && (
+          <g pointerEvents="none">
+            <line
+              x1={tools.measure.a.x}
+              y1={tools.measure.a.y}
+              x2={tools.measure.b.x}
+              y2={tools.measure.b.y}
+              stroke="#d97706"
+              strokeWidth={px(1.5)}
+              strokeDasharray={`${px(8)} ${px(5)}`}
+            />
+            {[tools.measure.a, tools.measure.b].map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r={px(3.5)} fill="#d97706" />
+            ))}
+            <text
+              x={(tools.measure.a.x + tools.measure.b.x) / 2}
+              y={(tools.measure.a.y + tools.measure.b.y) / 2 - px(10)}
+              fontSize={px(13)}
+              fontWeight={600}
+              textAnchor="middle"
+              fill="#d97706"
+            >
+              {formatLength(dist(tools.measure.a, tools.measure.b))}
             </text>
           </g>
         )}
 
         {/* snap cursor */}
-        {snappedCursor && (
+        {tools.snappedCursor && (
           <circle
-            cx={snappedCursor.x}
-            cy={snappedCursor.y}
-            r={4 / camera.scale}
+            cx={tools.snappedCursor.x}
+            cy={tools.snappedCursor.y}
+            r={px(4)}
             fill="none"
             stroke="#2563eb"
-            strokeWidth={1.5 / camera.scale}
+            strokeWidth={px(1.5)}
             pointerEvents="none"
           />
         )}
@@ -373,12 +199,12 @@ export function Editor2D() {
               key={end}
               cx={selectedWall[end].x}
               cy={selectedWall[end].y}
-              r={6 / camera.scale}
+              r={px(6)}
               fill="#fff"
               stroke="#2563eb"
-              strokeWidth={2 / camera.scale}
+              strokeWidth={px(2)}
               style={{ cursor: "move" }}
-              onPointerDown={startEndpointDrag(selectedWall.id, end)}
+              onPointerDown={tools.startEndpointDrag(selectedWall.id, end)}
             />
           ))}
       </svg>
