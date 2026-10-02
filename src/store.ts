@@ -34,6 +34,8 @@ export interface StoreState {
   showKeepOut: boolean;
   hideRoof: boolean;
   hideSlab: boolean;
+  /** bottom schedule drawer */
+  showSchedule: boolean;
   /** current chain-start point while drawing walls (null = no draft) */
   draftAnchor: Point | null;
   /** accumulated polyline points while drawing a duct */
@@ -50,6 +52,7 @@ export interface StoreState {
   setShowKeepOut: (v: boolean) => void;
   setHideRoof: (v: boolean) => void;
   setHideSlab: (v: boolean) => void;
+  setShowSchedule: (v: boolean) => void;
   setDraftAnchor: (p: Point | null) => void;
   setDraftPath: (pts: Point[]) => void;
   setWallDraftKind: (k: WallDraftKind) => void;
@@ -79,6 +82,7 @@ export const useStore = create<StoreState>((set, get) => ({
   showKeepOut: false,
   hideRoof: false,
   hideSlab: false,
+  showSchedule: false,
   draftAnchor: null,
   draftPath: [],
   wallDraftKind: "exterior",
@@ -92,6 +96,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setShowKeepOut: (showKeepOut) => set({ showKeepOut }),
   setHideRoof: (hideRoof) => set({ hideRoof }),
   setHideSlab: (hideSlab) => set({ hideSlab }),
+  setShowSchedule: (showSchedule) => set({ showSchedule }),
   setDraftAnchor: (draftAnchor) => set({ draftAnchor }),
   setDraftPath: (draftPath) => set({ draftPath }),
   setWallDraftKind: (wallDraftKind) => set({ wallDraftKind }),

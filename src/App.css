@@ -290,3 +290,79 @@
   background: var(--border);
   margin: 4px 0;
 }
+
+/* ---------- schedule panel ---------- */
+.schedule-panel {
+  height: 240px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-header .spacer {
+  flex: 1;
+}
+
+.schedule-header button {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.schedule-header button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.schedule-warnings {
+  padding: 4px 12px;
+  background: #fef2f2;
+  color: var(--danger);
+  font-size: 12px;
+  border-bottom: 1px solid #fecaca;
+}
+
+.schedule-scroll {
+  overflow: auto;
+  flex: 1;
+}
+
+.schedule-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.schedule-panel th,
+.schedule-panel td {
+  text-align: left;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.schedule-panel th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.schedule-panel tr.warn td {
+  background: #fef2f2;
+  color: var(--danger);
+}

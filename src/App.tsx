@@ -7,6 +7,7 @@ const View3D = lazy(() =>
   import("./components/View3D").then((m) => ({ default: m.View3D })),
 );
 import { PropertiesPanel } from "./components/PropertiesPanel";
+import { SchedulePanel } from "./components/SchedulePanel";
 import { StatusBar } from "./components/StatusBar";
 import { Toolbar } from "./components/Toolbar";
 import { useStore, useT } from "./store";
@@ -51,6 +52,7 @@ export default function App() {
   const canRedo = useStore((s) => s.future.length > 0);
   const viewMode = useStore((s) => s.viewMode);
   const setViewMode = useStore((s) => s.setViewMode);
+  const showSchedule = useStore((s) => s.showSchedule);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -162,6 +164,7 @@ export default function App() {
         )}
         <PropertiesPanel />
       </div>
+      {showSchedule && <SchedulePanel />}
       <StatusBar />
     </div>
   );

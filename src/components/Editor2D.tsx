@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dist, formatLength, wallPolygonExtended } from "../geometry";
+import { penetrationSchedule, proximityWarnings } from "../schedule";
 import { useStore } from "../store";
 import { useRooms } from "../useRooms";
 import type { Point } from "../types";
 import { DimensionsLayer } from "./editor2d/DimensionsLayer";
 import { HvacLayer } from "./editor2d/HvacLayer";
+import { KeepOutLayer } from "./editor2d/KeepOutLayer";
 import { GridLayer, type Camera } from "./editor2d/GridLayer";
 import { OpeningsLayer } from "./editor2d/OpeningsLayer";
 import { RoomsLayer } from "./editor2d/RoomsLayer";
@@ -29,6 +31,7 @@ export function Editor2D() {
   const tool = useStore((s) => s.tool);
   const selection = useStore((s) => s.selection);
   const showHvac = useStore((s) => s.showHvac);
+  const showKeepOut = useStore((s) => s.showKeepOut);
   const rooms = useRooms();
 
   useEffect(() => {
@@ -73,6 +76,11 @@ export function Editor2D() {
   }, [clientToWorld]);
 
   const tools = useEditorTools(camera, setCamera, clientToWorld, svgRef, rooms);
+
+  const warnings = useMemo(() => {
+    if (!showHvac) return [];
+    return proximityWarnings(penetrationSchedule(model, rooms));
+  }, [model, rooms, showHvac]);
 
   const viewBox = `${camera.cx - size.w / 2 / camera.scale} ${camera.cy - size.h / 2 / camera.scale} ${size.w / camera.scale} ${size.h / camera.scale}`;
   const selectedWall =
@@ -128,6 +136,12 @@ export function Editor2D() {
           rooms={rooms}
           scale={camera.scale}
         />
+        {showKeepOut && (
+          <KeepOutLayer
+            walls={model.walls}
+            width={model.settings.keepOutWidth}
+          />
+        )}
         {showHvac && (
           <HvacLayer
             hvac={model.hvac}
@@ -135,6 +149,34 @@ export function Editor2D() {
             selectedId={selection?.type === "hvac" ? selection.id : null}
           />
         )}
+
+        {/* proximity warnings between penetrations */}
+        {warnings.map((w, i) => (
+          <g key={i} pointerEvents="none" data-testid="proximity-marker">
+            <line
+              x1={w.a.pos.x}
+              y1={w.a.pos.y}
+              x2={w.b.pos.x}
+              y2={w.b.pos.y}
+              stroke="#dc2626"
+              strokeWidth={px(2)}
+              strokeDasharray={`${px(5)} ${px(4)}`}
+            />
+            <text
+              x={(w.a.pos.x + w.b.pos.x) / 2}
+              y={(w.a.pos.y + w.b.pos.y) / 2 + px(16)}
+              textAnchor="middle"
+              fontSize={px(12)}
+              fontWeight={700}
+              fill="#dc2626"
+              stroke="#fff"
+              strokeWidth={px(3)}
+              paintOrder="stroke"
+            >
+              ⚠ {Math.round(w.distance)} cm
+            </text>
+          </g>
+        ))}
 
         {/* duct draft preview */}
         {tools.ductPreview && tools.ductPreview.length >= 1 && (

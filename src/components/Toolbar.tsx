@@ -112,6 +112,18 @@ const icons = {
       <path d="M3 12h4l2-5 4 10 2-5h6" />
     </svg>
   ),
+  keepOut: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <rect x="3" y="8" width="18" height="8" />
+      <path d="M6 8l-3 3M11 8l-5 5M16 8l-5 5M21 8l-5 5M21 13l-3 3" />
+    </svg>
+  ),
+  schedule: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <rect x="3" y="4" width="18" height="16" rx="1" />
+      <path d="M3 9h18M3 14h18M9 4v16" />
+    </svg>
+  ),
 };
 
 const DRAWING_TOOLS: ToolDef[] = [
@@ -212,6 +224,10 @@ export function Toolbar() {
   const t = useT();
   const showHvac = useStore((s) => s.showHvac);
   const setShowHvac = useStore((s) => s.setShowHvac);
+  const showKeepOut = useStore((s) => s.showKeepOut);
+  const setShowKeepOut = useStore((s) => s.setShowKeepOut);
+  const showSchedule = useStore((s) => s.showSchedule);
+  const setShowSchedule = useStore((s) => s.setShowSchedule);
 
   return (
     <div className="toolbar" data-testid="toolbar">
@@ -230,6 +246,22 @@ export function Toolbar() {
         data-testid="toggle-hvac"
       >
         {icons.hvacToggle}
+      </button>
+      <button
+        className={`toolbtn ${showKeepOut ? "active" : ""}`}
+        title={t("view.keepOut")}
+        onClick={() => setShowKeepOut(!showKeepOut)}
+        data-testid="toggle-keepout"
+      >
+        {icons.keepOut}
+      </button>
+      <button
+        className={`toolbtn ${showSchedule ? "active" : ""}`}
+        title={t("schedule.title")}
+        onClick={() => setShowSchedule(!showSchedule)}
+        data-testid="toggle-schedule"
+      >
+        {icons.schedule}
       </button>
     </div>
   );

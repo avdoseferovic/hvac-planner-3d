@@ -47,6 +47,12 @@ export function ProjectProps() {
         onCommit={(v) => setSetting("exteriorWallThickness", v)}
       />
       <NumField
+        label={t("props.keepOutWidth")}
+        value={settings.keepOutWidth}
+        min={10}
+        onCommit={(v) => setSetting("keepOutWidth", v)}
+      />
+      <NumField
         label={t("props.interiorThickness")}
         value={settings.interiorWallThickness}
         min={5}

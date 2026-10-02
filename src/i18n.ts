@@ -72,6 +72,21 @@ const en = {
   "hint.jumper": "Click room-side hole, then hallway-side hole",
   "hint.facade": "Click on an exterior wall",
 
+  // schedule
+  "schedule.title": "Penetrations",
+  "schedule.airflow": "Airflow balance",
+  "schedule.id": "ID",
+  "schedule.room": "Room",
+  "schedule.purpose": "Purpose",
+  "schedule.surface": "Surface",
+  "schedule.slab": "Slab",
+  "schedule.wall": "Wall",
+  "schedule.x": "X from wall (cm)",
+  "schedule.y": "Y from wall (cm)",
+  "schedule.supply": "Supply",
+  "schedule.extract": "Return/extract",
+  "schedule.imbalance": "Imbalance",
+
   // openings & rooms
   "props.door": "Door",
   "props.window": "Window",
@@ -164,6 +179,20 @@ const bs: Record<TranslationKey, string> = {
   "hint.duct": "Klikći tačke duž trase · Enter/dupli klik = završi · Esc = odustani",
   "hint.jumper": "Klikni rupu u sobi, zatim rupu u hodniku",
   "hint.facade": "Klikni na vanjski zid",
+
+  "schedule.title": "Prodori",
+  "schedule.airflow": "Bilans zraka",
+  "schedule.id": "ID",
+  "schedule.room": "Prostorija",
+  "schedule.purpose": "Namjena",
+  "schedule.surface": "Površina",
+  "schedule.slab": "Ploča",
+  "schedule.wall": "Zid",
+  "schedule.x": "X od zida (cm)",
+  "schedule.y": "Y od zida (cm)",
+  "schedule.supply": "Dovod",
+  "schedule.extract": "Povrat/odsis",
+  "schedule.imbalance": "Disbalans",
 
   "props.door": "Vrata",
   "props.window": "Prozor",
