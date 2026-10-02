@@ -1,0 +1,632 @@
+{
+  "app": "hvac-planner-3d",
+  "version": 1,
+  "model": {
+    "walls": [
+      {
+        "id": "wall-mrs7280m-1",
+        "a": {
+          "x": 0,
+          "y": 0
+        },
+        "b": {
+          "x": 1200,
+          "y": 0
+        },
+        "thickness": 25,
+        "loadBearing": true
+      },
+      {
+        "id": "wall-mrs7281c-2",
+        "a": {
+          "x": 1200,
+          "y": 0
+        },
+        "b": {
+          "x": 1200,
+          "y": 1300
+        },
+        "thickness": 25,
+        "loadBearing": true
+      },
+      {
+        "id": "wall-mrs72822-3",
+        "a": {
+          "x": 1200,
+          "y": 1300
+        },
+        "b": {
+          "x": 0,
+          "y": 1300
+        },
+        "thickness": 25,
+        "loadBearing": true
+      },
+      {
+        "id": "wall-mrs7282t-4",
+        "a": {
+          "x": 0,
+          "y": 1300
+        },
+        "b": {
+          "x": 0,
+          "y": 0
+        },
+        "thickness": 25,
+        "loadBearing": true
+      },
+      {
+        "id": "wall-mrs7286b-5",
+        "a": {
+          "x": 0,
+          "y": 550
+        },
+        "b": {
+          "x": 1200,
+          "y": 550
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs72889-6",
+        "a": {
+          "x": 0,
+          "y": 750
+        },
+        "b": {
+          "x": 1200,
+          "y": 750
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728a7-7",
+        "a": {
+          "x": 450,
+          "y": 0
+        },
+        "b": {
+          "x": 450,
+          "y": 550
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728c5-8",
+        "a": {
+          "x": 750,
+          "y": 0
+        },
+        "b": {
+          "x": 750,
+          "y": 550
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728e1-9",
+        "a": {
+          "x": 450,
+          "y": 750
+        },
+        "b": {
+          "x": 450,
+          "y": 1300
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728fz-a",
+        "a": {
+          "x": 750,
+          "y": 750
+        },
+        "b": {
+          "x": 750,
+          "y": 1300
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728hw-b",
+        "a": {
+          "x": 270,
+          "y": 275
+        },
+        "b": {
+          "x": 270,
+          "y": 550
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728jt-c",
+        "a": {
+          "x": 270,
+          "y": 275
+        },
+        "b": {
+          "x": 450,
+          "y": 275
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728lp-d",
+        "a": {
+          "x": 930,
+          "y": 275
+        },
+        "b": {
+          "x": 930,
+          "y": 550
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728nl-e",
+        "a": {
+          "x": 750,
+          "y": 275
+        },
+        "b": {
+          "x": 930,
+          "y": 275
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728pi-f",
+        "a": {
+          "x": 270,
+          "y": 750
+        },
+        "b": {
+          "x": 270,
+          "y": 1025
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728rf-g",
+        "a": {
+          "x": 270,
+          "y": 1025
+        },
+        "b": {
+          "x": 450,
+          "y": 1025
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728te-h",
+        "a": {
+          "x": 930,
+          "y": 750
+        },
+        "b": {
+          "x": 930,
+          "y": 1025
+        },
+        "thickness": 14,
+        "loadBearing": false
+      },
+      {
+        "id": "wall-mrs728vc-i",
+        "a": {
+          "x": 750,
+          "y": 1025
+        },
+        "b": {
+          "x": 930,
+          "y": 1025
+        },
+        "thickness": 14,
+        "loadBearing": false
+      }
+    ],
+    "openings": [
+      {
+        "id": "door-mrs728xi-j",
+        "wallId": "wall-mrs7286b-5",
+        "type": "door",
+        "t": 0.125,
+        "width": 90,
+        "height": 205,
+        "sill": 0
+      },
+      {
+        "id": "door-mrs728yb-k",
+        "wallId": "wall-mrs7286b-5",
+        "type": "door",
+        "t": 0.8333333333333334,
+        "width": 90,
+        "height": 205,
+        "sill": 0
+      },
+      {
+        "id": "door-mrs728z3-l",
+        "wallId": "wall-mrs72889-6",
+        "type": "door",
+        "t": 0.125,
+        "width": 90,
+        "height": 205,
+        "sill": 0
+      },
+      {
+        "id": "door-mrs728zv-m",
+        "wallId": "wall-mrs72889-6",
+        "type": "door",
+        "t": 0.8333333333333334,
+        "width": 90,
+        "height": 205,
+        "sill": 0
+      },
+      {
+        "id": "door-mrs7290n-n",
+        "wallId": "wall-mrs7286b-5",
+        "type": "door",
+        "t": 0.5,
+        "width": 90,
+        "height": 205,
+        "sill": 0
+      },
+      {
+        "id": "door-mrs7291e-o",
+        "wallId": "wall-mrs72889-6",
+        "type": "door",
+        "t": 0.5,
+        "width": 90,
+        "height": 205,
+        "sill": 0
+      }
+    ],
+    "hvac": [
+      {
+        "kind": "acUnit",
+        "id": "ac-mrs72931-p",
+        "label": "AC 1",
+        "pos": {
+          "x": 360,
+          "y": 350
+        },
+        "rotation": 0,
+        "width": 90,
+        "depth": 70,
+        "height": 25,
+        "airflow": 350
+      },
+      {
+        "kind": "acUnit",
+        "id": "ac-mrs7293w-q",
+        "label": "AC 2",
+        "pos": {
+          "x": 840,
+          "y": 350
+        },
+        "rotation": 0,
+        "width": 90,
+        "depth": 70,
+        "height": 25,
+        "airflow": 350
+      },
+      {
+        "kind": "acUnit",
+        "id": "ac-mrs7294q-r",
+        "label": "AC 3",
+        "pos": {
+          "x": 360,
+          "y": 900
+        },
+        "rotation": 0,
+        "width": 90,
+        "depth": 70,
+        "height": 25,
+        "airflow": 350
+      },
+      {
+        "kind": "acUnit",
+        "id": "ac-mrs7295i-s",
+        "label": "AC 4",
+        "pos": {
+          "x": 840,
+          "y": 900
+        },
+        "rotation": 0,
+        "width": 90,
+        "depth": 70,
+        "height": 25,
+        "airflow": 350
+      },
+      {
+        "kind": "supplyDiffuser",
+        "id": "sup-mrs72976-t",
+        "pos": {
+          "x": 150,
+          "y": 150
+        },
+        "connDiameter": 250,
+        "drillDiameter": 270,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "supplyDiffuser",
+        "id": "sup-mrs7299h-u",
+        "pos": {
+          "x": 1050,
+          "y": 150
+        },
+        "connDiameter": 250,
+        "drillDiameter": 270,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "supplyDiffuser",
+        "id": "sup-mrs729b9-v",
+        "pos": {
+          "x": 150,
+          "y": 1150
+        },
+        "connDiameter": 250,
+        "drillDiameter": 270,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "supplyDiffuser",
+        "id": "sup-mrs729cz-w",
+        "pos": {
+          "x": 1050,
+          "y": 1150
+        },
+        "connDiameter": 250,
+        "drillDiameter": 270,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "returnGrille",
+        "id": "ret-mrs729fj-x",
+        "pos": {
+          "x": 150,
+          "y": 450
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "returnGrille",
+        "id": "ret-mrs729g9-y",
+        "pos": {
+          "x": 1050,
+          "y": 450
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "returnGrille",
+        "id": "ret-mrs729h0-z",
+        "pos": {
+          "x": 150,
+          "y": 850
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "returnGrille",
+        "id": "ret-mrs729hq-10",
+        "pos": {
+          "x": 1050,
+          "y": 850
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 90
+      },
+      {
+        "kind": "hrvUnit",
+        "id": "hrv-mrs729jb-11",
+        "label": "HRV 1",
+        "pos": {
+          "x": 600,
+          "y": 650
+        },
+        "rotation": 0,
+        "width": 110,
+        "depth": 60,
+        "height": 30,
+        "nominalFlow": 350
+      },
+      {
+        "kind": "freshAirValve",
+        "id": "fre-mrs729l4-12",
+        "pos": {
+          "x": 300,
+          "y": 650
+        },
+        "connDiameter": 160,
+        "drillDiameter": 180,
+        "drillAuto": true,
+        "airflow": 100
+      },
+      {
+        "kind": "freshAirValve",
+        "id": "fre-mrs729m1-13",
+        "pos": {
+          "x": 900,
+          "y": 650
+        },
+        "connDiameter": 160,
+        "drillDiameter": 180,
+        "drillAuto": true,
+        "airflow": 100
+      },
+      {
+        "kind": "extractValve",
+        "id": "ext-mrs729nt-14",
+        "pos": {
+          "x": 360,
+          "y": 480
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 50
+      },
+      {
+        "kind": "extractValve",
+        "id": "ext-mrs729oq-15",
+        "pos": {
+          "x": 840,
+          "y": 480
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 50
+      },
+      {
+        "kind": "extractValve",
+        "id": "ext-mrs729po-16",
+        "pos": {
+          "x": 360,
+          "y": 800
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 50
+      },
+      {
+        "kind": "extractValve",
+        "id": "ext-mrs729qj-17",
+        "pos": {
+          "x": 840,
+          "y": 800
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 50
+      },
+      {
+        "kind": "extractValve",
+        "id": "ext-mrs729ri-18",
+        "pos": {
+          "x": 600,
+          "y": 1150
+        },
+        "connDiameter": 125,
+        "drillDiameter": 145,
+        "drillAuto": true,
+        "airflow": 50
+      },
+      {
+        "kind": "jumperDuct",
+        "id": "jmp-mrs729u1-19",
+        "posA": {
+          "x": 150,
+          "y": 520
+        },
+        "posB": {
+          "x": 150,
+          "y": 580
+        },
+        "diameter": 160,
+        "drillDiameter": 180,
+        "drillAuto": true
+      },
+      {
+        "kind": "jumperDuct",
+        "id": "jmp-mrs729vq-1a",
+        "posA": {
+          "x": 1000,
+          "y": 520
+        },
+        "posB": {
+          "x": 1000,
+          "y": 580
+        },
+        "diameter": 160,
+        "drillDiameter": 180,
+        "drillAuto": true
+      },
+      {
+        "kind": "jumperDuct",
+        "id": "jmp-mrs729xh-1b",
+        "posA": {
+          "x": 150,
+          "y": 780
+        },
+        "posB": {
+          "x": 150,
+          "y": 720
+        },
+        "diameter": 160,
+        "drillDiameter": 180,
+        "drillAuto": true
+      },
+      {
+        "kind": "jumperDuct",
+        "id": "jmp-mrs729z5-1c",
+        "posA": {
+          "x": 1000,
+          "y": 780
+        },
+        "posB": {
+          "x": 1000,
+          "y": 720
+        },
+        "diameter": 160,
+        "drillDiameter": 180,
+        "drillAuto": true
+      }
+    ],
+    "roomNames": {
+      "wall-mrs7281c-2|wall-mrs7282t-4|wall-mrs7286b-5|wall-mrs72889-6": "Hodnik",
+      "wall-mrs72889-6|wall-mrs728e1-9|wall-mrs728pi-f|wall-mrs728rf-g": "Kupatilo 3",
+      "wall-mrs72889-6|wall-mrs728fz-a|wall-mrs728te-h|wall-mrs728vc-i": "Kupatilo 4",
+      "wall-mrs72822-3|wall-mrs7282t-4|wall-mrs72889-6|wall-mrs728e1-9|wall-mrs728pi-f|wall-mrs728rf-g": "Soba 3",
+      "wall-mrs7281c-2|wall-mrs72822-3|wall-mrs72889-6|wall-mrs728fz-a|wall-mrs728te-h|wall-mrs728vc-i": "Soba 4",
+      "wall-mrs7280m-1|wall-mrs7286b-5|wall-mrs728a7-7|wall-mrs728c5-8": "Stepenište",
+      "wall-mrs72822-3|wall-mrs72889-6|wall-mrs728e1-9|wall-mrs728fz-a": "Vešeraj",
+      "wall-mrs7280m-1|wall-mrs7282t-4|wall-mrs7286b-5|wall-mrs728a7-7|wall-mrs728hw-b|wall-mrs728jt-c": "Soba 1",
+      "wall-mrs7280m-1|wall-mrs7281c-2|wall-mrs7286b-5|wall-mrs728c5-8|wall-mrs728lp-d|wall-mrs728nl-e": "Soba 2",
+      "wall-mrs7286b-5|wall-mrs728a7-7|wall-mrs728hw-b|wall-mrs728jt-c": "Kupatilo 1",
+      "wall-mrs7286b-5|wall-mrs728c5-8|wall-mrs728lp-d|wall-mrs728nl-e": "Kupatilo 2"
+    },
+    "settings": {
+      "gridSize": 5,
+      "wallHeight": 280,
+      "slabThickness": 20,
+      "atticHeight": 250,
+      "exteriorWallThickness": 25,
+      "interiorWallThickness": 14,
+      "keepOutWidth": 60
+    }
+  }
+}
