@@ -12,9 +12,16 @@ export interface Wall {
   /** wall thickness in cm */
   thickness: number;
   loadBearing: boolean;
+  /** elements sharing a groupId select and move as one unit */
+  groupId?: string;
 }
 
 export type OpeningType = "door" | "window";
+
+/** Door hinge jamb, seen along the wall a→b direction. */
+export type DoorHinge = "left" | "right";
+/** Which side of the wall the door leaf swings into ("in" = wall perp side). */
+export type DoorSwing = "in" | "out";
 
 export interface Opening {
   id: string;
@@ -26,6 +33,10 @@ export interface Opening {
   height: number;
   /** sill height above floor (windows only) */
   sill: number;
+  /** doors only; absent = "left" (kept optional for older project files) */
+  hinge?: DoorHinge;
+  /** doors only; absent = "in" */
+  swing?: DoorSwing;
 }
 
 /** Rooms are derived from closed wall loops; names are user-editable. */
@@ -60,6 +71,7 @@ export type HvacKind =
 export interface AcUnit {
   kind: "acUnit";
   id: string;
+  groupId?: string;
   label: string;
   pos: Point;
   /** rotation in degrees */
@@ -72,6 +84,7 @@ export interface AcUnit {
 
 export interface CeilingPenetrationBase {
   id: string;
+  groupId?: string;
   pos: Point;
   /** connection diameter in mm (125/160/200/250) */
   connDiameter: number;
@@ -98,6 +111,7 @@ export interface FreshAirValve extends CeilingPenetrationBase {
 export interface Duct {
   kind: "duct";
   id: string;
+  groupId?: string;
   /** polyline in plan (cm); runs at attic height */
   points: Point[];
   /** diameter in mm */
@@ -108,6 +122,7 @@ export interface Duct {
 export interface HrvUnit {
   kind: "hrvUnit";
   id: string;
+  groupId?: string;
   label: string;
   pos: Point;
   rotation: number;
@@ -120,6 +135,7 @@ export interface HrvUnit {
 export interface JumperDuct {
   kind: "jumperDuct";
   id: string;
+  groupId?: string;
   /** room-side ceiling hole */
   posA: Point;
   /** hallway-side ceiling hole */
@@ -132,6 +148,7 @@ export interface JumperDuct {
 export interface FacadePenetration {
   kind: "facadePenetration";
   id: string;
+  groupId?: string;
   wallId: string;
   /** normalized position along wall */
   t: number;
@@ -206,6 +223,7 @@ export function emptyModel(): Model {
 export type Tool =
   | "select"
   | "wall"
+  | "cutWall"
   | "door"
   | "window"
   | "measure"

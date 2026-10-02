@@ -76,7 +76,7 @@ export function useHvacTool(scale: number): HvacToolApi {
       commit((m) => {
         m.hvac.push(el);
       });
-      setSelection({ type: "hvac", id: el.id });
+      setSelection([{ type: "hvac", id: el.id }]);
     },
     [commit, setSelection],
   );
@@ -160,7 +160,7 @@ export function useHvacTool(scale: number): HvacToolApi {
       if (!showHvac) return null;
       const hit = hitTestHvac(model.hvac, model.walls, world, 6 / scale);
       if (!hit) return null;
-      setSelection({ type: "hvac", id: hit.el.id });
+      // selection is decided by the caller (may expand to a group)
       return {
         kind: "moveHvac",
         id: hit.el.id,
@@ -170,7 +170,7 @@ export function useHvacTool(scale: number): HvacToolApi {
         moved: false,
       };
     },
-    [showHvac, model.hvac, model.walls, scale, setSelection],
+    [showHvac, model.hvac, model.walls, scale],
   );
 
   const applyDrag = useCallback(

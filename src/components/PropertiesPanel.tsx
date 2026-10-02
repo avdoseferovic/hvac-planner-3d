@@ -7,10 +7,23 @@ import {
   add,
   wallLength,
 } from "../geometry";
+import {
+  applyGrouping,
+  applyUngrouping,
+  isGroupable,
+  selectionGroupId,
+} from "../grouping";
 import { clampOpeningT } from "../openings";
-import { useStore, useT } from "../store";
+import { nextId, useStore, useT } from "../store";
 import { useRooms } from "../useRooms";
-import type { Opening, Room, Wall } from "../types";
+import type {
+  DoorHinge,
+  DoorSwing,
+  Opening,
+  Room,
+  Selection,
+  Wall,
+} from "../types";
 import { HvacProps } from "./panels/HvacProps";
 import { NumField } from "./panels/NumField";
 import { ProjectProps } from "./panels/ProjectProps";
@@ -151,6 +164,44 @@ function OpeningProps({ opening }: { opening: Opening }) {
           }
         />
       )}
+      {opening.type === "door" && (
+        <>
+          <label className="field">
+            <span>{t("props.hinge")}</span>
+            <select
+              value={opening.hinge ?? "left"}
+              onChange={(e) => {
+                const v = e.target.value as DoorHinge;
+                setOpening((o) => {
+                  o.hinge = v;
+                });
+                e.currentTarget.blur();
+              }}
+              data-testid="door-hinge"
+            >
+              <option value="left">{t("props.hingeLeft")}</option>
+              <option value="right">{t("props.hingeRight")}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t("props.swing")}</span>
+            <select
+              value={opening.swing ?? "in"}
+              onChange={(e) => {
+                const v = e.target.value as DoorSwing;
+                setOpening((o) => {
+                  o.swing = v;
+                });
+                e.currentTarget.blur();
+              }}
+              data-testid="door-swing"
+            >
+              <option value="in">{t("props.swingIn")}</option>
+              <option value="out">{t("props.swingOut")}</option>
+            </select>
+          </label>
+        </>
+      )}
       {wall && (
         <div className="prop-readout">
           {t("props.wall")}: {formatLength(wallLength(wall))}
@@ -186,6 +237,48 @@ function RoomProps({ room }: { room: Room }) {
   );
 }
 
+function GroupProps({ selection }: { selection: Selection[] }) {
+  const t = useT();
+  const model = useStore((s) => s.model);
+  const commit = useStore((s) => s.commit);
+  const setSelection = useStore((s) => s.setSelection);
+
+  const groupable = selection.filter(isGroupable);
+  const gid = selectionGroupId(model, selection);
+
+  return (
+    <div className="prop-section" data-testid="group-props">
+      <h3>{t("props.multiSelected")}</h3>
+      <div className="prop-readout">
+        {groupable.length} {t("props.objects")}
+      </div>
+      <div className="panel-actions">
+        {gid ? (
+          <button
+            onClick={() => commit((m) => applyUngrouping(m, gid))}
+            data-testid="btn-ungroup"
+          >
+            {t("action.ungroup")}
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              const id = nextId("group");
+              commit((m) => applyGrouping(m, groupable, id));
+              setSelection(groupable);
+            }}
+            disabled={groupable.length < 2}
+            data-testid="btn-group"
+          >
+            {t("action.group")}
+          </button>
+        )}
+      </div>
+      <div className="prop-readout">{t("hint.groupShortcut")}</div>
+    </div>
+  );
+}
+
 export function PropertiesPanel() {
   const t = useT();
   const selection = useStore((s) => s.selection);
@@ -195,30 +288,27 @@ export function PropertiesPanel() {
   const hvac = useStore((s) => s.model.hvac);
   const rooms = useRooms();
 
+  const single = selection.length === 1 ? selection[0] : null;
   const selectedWall =
-    selection?.type === "wall"
-      ? walls.find((w) => w.id === selection.id)
-      : undefined;
+    single?.type === "wall" ? walls.find((w) => w.id === single.id) : undefined;
   const selectedOpening =
-    selection?.type === "opening"
-      ? openings.find((o) => o.id === selection.id)
+    single?.type === "opening"
+      ? openings.find((o) => o.id === single.id)
       : undefined;
   const selectedRoom =
-    selection?.type === "room"
-      ? rooms.find((r) => r.key === selection.id)
+    single?.type === "room"
+      ? rooms.find((r) => r.key === single.id)
       : undefined;
   const selectedHvac =
-    selection?.type === "hvac"
-      ? hvac.find((h) => h.id === selection.id)
-      : undefined;
+    single?.type === "hvac" ? hvac.find((h) => h.id === single.id) : undefined;
 
-  const hasSelection =
-    selectedWall || selectedOpening || selectedRoom || selectedHvac;
+  const hasSelection = selection.length > 0;
 
   return (
     <aside className="props-panel" data-testid="props-panel">
       <h2>{t("props.title")}</h2>
       {tool === "wall" && <WallToolProps />}
+      {selection.length > 1 && <GroupProps selection={selection} />}
       {selectedWall && <WallProps wall={selectedWall} />}
       {selectedOpening && <OpeningProps opening={selectedOpening} />}
       {selectedRoom && <RoomProps room={selectedRoom} />}

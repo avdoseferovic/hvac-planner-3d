@@ -39,7 +39,7 @@ npx vitest run     # unit tests
 | W | Wall — click to chain segments, Shift = free angle, Enter/double-click = finish |
 | D | Door (click on a wall) |
 | N | Window (click on a wall) |
-| M | Measure (click two points) |
+| M | Measure (click two points; the finished measurement remains as a temporary snap guide when you switch to Wall) |
 | U | Ducted AC indoor unit (attic) |
 | S | Supply diffuser + ceiling penetration |
 | R | Return grille + penetration |

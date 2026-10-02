@@ -19,6 +19,24 @@ describe('project persistence', () => {
     expect(restored).toEqual(model)
   })
 
+  it('should round-trip door hinge/swing settings', () => {
+    const model = emptyModel()
+    model.openings.push({
+      id: 'o1',
+      wallId: 'w1',
+      type: 'door',
+      t: 0.5,
+      width: 90,
+      height: 205,
+      sill: 0,
+      hinge: 'right',
+      swing: 'out',
+    })
+    const restored = deserializeProject(serializeProject(model))
+    expect(restored.openings[0].hinge).toBe('right')
+    expect(restored.openings[0].swing).toBe('out')
+  })
+
   it('should reject foreign or corrupt JSON', () => {
     expect(() => deserializeProject('{"foo": 1}')).toThrow('Invalid project file')
     expect(() => deserializeProject('not json')).toThrow()

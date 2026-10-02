@@ -3,23 +3,35 @@ import {
   add,
   closestT,
   dist,
-  distToSegment,
   pointInPolygon,
-  snapToAxis,
-  snapToEndpoints,
   snapToGrid,
 } from "../../geometry";
+import { snapToConstructionGuide } from "../../construction-guide";
+import { restoreElements, translateSelection } from "../../grouping";
+import { getRectangleGuide, type RectangleGuide } from "../../rectangle-guide";
 import {
-  clampOpeningT,
-  findWallNear,
-  openingCenter,
-  placeOpening,
-} from "../../openings";
+  snapDraftPoint,
+  snapMeasurementPoint,
+  type SnapMods,
+} from "../../snapping";
+import {
+  hitTestOpening,
+  hitTestWall,
+  makeMultiDrag,
+  pickSelection,
+  type MoveMultiDrag,
+} from "./selectTool";
+import { clampOpeningT, findWallNear, placeOpening } from "../../openings";
+import { cutWallSegment } from "../../wall-cut";
 import { commitDuctDraft } from "../../actions";
 import { nextId, useStore } from "../../store";
-import type { Opening, Point, Room, Tool, Wall } from "../../types";
+import type { Opening, Point, Room, Selection, Tool, Wall } from "../../types";
 import type { Camera } from "./GridLayer";
+import { screenOffsetToWorld } from "../../camera";
+import { capturePointer, releasePointer } from "./pointer-capture";
 import { useHvacTool, type HvacDrag } from "./useHvacTool";
+import { useModifierKeys } from "./useModifierKeys";
+import { useSpacePan } from "./useSpacePan";
 
 type DragState =
   | { kind: "pan"; startClient: Point; startCamera: Camera }
@@ -30,6 +42,7 @@ type DragState =
       orig: Wall;
       moved: boolean;
     }
+  | MoveMultiDrag
   | { kind: "endpoint"; wallId: string; end: "a" | "b"; moved: boolean }
   | { kind: "moveOpening"; openingId: string; moved: boolean }
   | HvacDrag;
@@ -42,12 +55,20 @@ export interface MeasureState {
 export interface EditorTools {
   mouse: Point | null;
   shift: boolean;
+  /** true while the spacebar is held (Figma-style pan mode) */
+  spacePan: boolean;
+  /** true while a pan drag is in progress */
+  panning: boolean;
   snappedCursor: Point | null;
   draftWall: Wall | null;
+  /** Two missing sides of the active right-angle wall chain. */
+  rectangleGuide: RectangleGuide | null;
   openingPreview: { wall: Wall; opening: Opening } | null;
   measure: MeasureState | null;
   ductPreview: Point[] | null;
   jumperFirst: Point | null;
+  /** span being removed by the cut tool (anchor → cursor) */
+  cutPreview: { a: Point; b: Point } | null;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
@@ -58,22 +79,6 @@ export interface EditorTools {
   ) => (e: React.PointerEvent) => void;
 }
 
-/** Pointer capture helpers tolerant of synthetic events (tests) and lost pointers. */
-function capturePointer(el: SVGSVGElement | null, id: number): void {
-  try {
-    el?.setPointerCapture(id);
-  } catch {
-    /* no active pointer (synthetic event) — safe to ignore */
-  }
-}
-function releasePointer(el: SVGSVGElement | null, id: number): void {
-  try {
-    el?.releasePointerCapture(id);
-  } catch {
-    /* ignore */
-  }
-}
-
 export function useEditorTools(
   camera: Camera,
   setCamera: (c: Camera) => void,
@@ -82,9 +87,13 @@ export function useEditorTools(
   rooms: Room[],
 ): EditorTools {
   const dragRef = useRef<DragState | null>(null);
+  /** wall + position of the first cut-tool click */
+  const cutWallRef = useRef<{ wallId: string; t: number } | null>(null);
   const [mouse, setMouse] = useState<Point | null>(null);
-  const [shift, setShift] = useState(false);
+  const [panning, setPanning] = useState(false);
   const [measure, setMeasure] = useState<MeasureState | null>(null);
+  const { shift, alt } = useModifierKeys();
+  const spacePan = useSpacePan();
 
   const model = useStore((s) => s.model);
   const tool = useStore((s) => s.tool);
@@ -104,65 +113,53 @@ export function useEditorTools(
       ? model.settings.exteriorWallThickness
       : model.settings.interiorWallThickness;
 
-  // reset transient tool state when the tool changes
+  // Keep a completed measurement while switching directly to Wall: it is a
+  // temporary construction guide for setting an exact wall-start offset.
   useEffect(() => {
-    setMeasure(null);
+    if (tool !== "measure" && tool !== "wall") setMeasure(null);
+    cutWallRef.current = null;
   }, [tool]);
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => e.key === "Shift" && setShift(true);
-    const up = (e: KeyboardEvent) => e.key === "Shift" && setShift(false);
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, []);
-
   const snapPoint = useCallback(
-    (raw: Point, from: Point | null, free: boolean): Point => {
-      const ep = snapToEndpoints(raw, model.walls, 12 / camera.scale);
-      if (ep) return ep;
-      if (free) return raw;
-      if (from) {
-        const onAxis = snapToAxis(from, raw);
-        if (onAxis.y === from.y) {
-          return { x: Math.round(onAxis.x / gridSize) * gridSize, y: from.y };
-        }
-        return { x: from.x, y: Math.round(onAxis.y / gridSize) * gridSize };
-      }
-      return snapToGrid(raw, gridSize);
-    },
+    (raw: Point, from: Point | null, mods: SnapMods): Point =>
+      snapDraftPoint(raw, from, mods, model.walls, 12 / camera.scale, gridSize),
     [model.walls, camera.scale, gridSize],
   );
 
-  const hitTestWall = useCallback(
-    (p: Point): Wall | null => {
-      let best: Wall | null = null;
-      let bestD = Infinity;
-      for (const w of model.walls) {
-        const d = distToSegment(p, w.a, w.b);
-        if (d <= w.thickness / 2 + 8 / camera.scale && d < bestD) {
-          bestD = d;
-          best = w;
-        }
-      }
-      return best;
-    },
-    [model.walls, camera.scale],
+  const snapMeasurePoint = useCallback(
+    (raw: Point, mods: SnapMods): Point =>
+      snapMeasurementPoint(
+        raw,
+        mods,
+        model.walls,
+        12 / camera.scale,
+        gridSize,
+      ),
+    [model.walls, camera.scale, gridSize],
   );
 
-  const hitTestOpening = useCallback(
-    (p: Point): Opening | null => {
-      for (const o of model.openings) {
-        const wall = model.walls.find((w) => w.id === o.wallId);
-        if (!wall) continue;
-        if (dist(p, openingCenter(wall, o)) <= o.width / 2) return o;
+  const snapWallPoint = useCallback(
+    (raw: Point, from: Point | null, mods: SnapMods): Point => {
+      const snapped = snapPoint(raw, from, mods);
+      if (mods.free) return snapped;
+
+      const measuredPoint = snapToConstructionGuide(
+        raw,
+        measure?.b ? { a: measure.a, b: measure.b } : null,
+        12 / camera.scale,
+      );
+      if (measuredPoint) return measuredPoint;
+
+      const rectangleGuide = getRectangleGuide(model.walls, from);
+      if (
+        rectangleGuide &&
+        dist(raw, rectangleGuide.suggestedCorner) <= 16 / camera.scale
+      ) {
+        return { ...rectangleGuide.suggestedCorner };
       }
-      return null;
+      return snapped;
     },
-    [model.openings, model.walls],
+    [camera.scale, measure, model.walls, snapPoint],
   );
 
   const openingToolTarget = useCallback(
@@ -183,19 +180,23 @@ export function useEditorTools(
     capturePointer(svgRef.current, e.pointerId);
     const world = clientToWorld(e.clientX, e.clientY);
 
-    if (e.button === 1 || e.button === 2) {
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && spacePan)) {
       dragRef.current = {
         kind: "pan",
         startClient: { x: e.clientX, y: e.clientY },
         startCamera: { ...camera },
       };
+      setPanning(true);
       return;
     }
     if (e.button !== 0) return;
 
     switch (tool) {
       case "wall": {
-        const p = snapPoint(world, draftAnchor, e.shiftKey);
+        const p = snapWallPoint(world, draftAnchor, {
+          free: e.altKey,
+          fine: e.shiftKey,
+        });
         if (!draftAnchor) {
           setDraftAnchor(p);
         } else if (dist(draftAnchor, p) >= 1) {
@@ -221,46 +222,97 @@ export function useEditorTools(
           commit((m) => {
             m.openings.push({ ...target.opening, id });
           });
-          setSelection({ type: "opening", id });
+          setSelection([{ type: "opening", id }]);
         }
         return;
       }
       case "measure": {
-        const p = snapPoint(world, null, e.shiftKey);
+        const p = snapMeasurePoint(world, {
+          free: e.altKey,
+          fine: e.shiftKey,
+        });
         if (!measure || measure.b) setMeasure({ a: p, b: null });
         else setMeasure({ a: measure.a, b: p });
         return;
       }
+      case "cutWall": {
+        const hitW = hitTestWall(model.walls, world, 8 / camera.scale);
+        if (!hitW) return;
+        const p = snapPoint(world, null, { free: e.altKey, fine: e.shiftKey });
+        const t = closestT(hitW.a, hitW.b, p);
+        const anchor = cutWallRef.current;
+        if (!anchor || anchor.wallId !== hitW.id || !draftAnchor) {
+          setDraftAnchor(p);
+          cutWallRef.current = { wallId: hitW.id, t };
+          return;
+        }
+        commit((m) =>
+          cutWallSegment(
+            m,
+            hitW.id,
+            anchor.t,
+            t,
+            nextId("wall"),
+            nextId("wall"),
+          ),
+        );
+        setDraftAnchor(null);
+        cutWallRef.current = null;
+        return;
+      }
       case "select": {
+        const additive = e.shiftKey;
+        const st = useStore.getState();
+        const choose = (item: Selection): Selection[] => {
+          const sel = pickSelection(st.model, st.selection, item, additive);
+          setSelection(sel);
+          return sel;
+        };
+        const multiOrNull = (sel: Selection[]): boolean => {
+          if (additive) return true; // shift-click only adjusts the selection
+          if (sel.length > 1) {
+            dragRef.current = makeMultiDrag(st.model, sel, world);
+            return true;
+          }
+          return false;
+        };
+
         const hvacDrag = hvacApi.selectAt(world);
         if (hvacDrag) {
-          dragRef.current = hvacDrag;
+          const sel = choose({ type: "hvac", id: hvacDrag.id });
+          if (!multiOrNull(sel)) dragRef.current = hvacDrag;
           return;
         }
-        const opening = hitTestOpening(world);
+        const opening = hitTestOpening(model.walls, model.openings, world);
         if (opening) {
-          setSelection({ type: "opening", id: opening.id });
-          dragRef.current = {
-            kind: "moveOpening",
-            openingId: opening.id,
-            moved: false,
-          };
+          setSelection([{ type: "opening", id: opening.id }]);
+          if (!additive) {
+            dragRef.current = {
+              kind: "moveOpening",
+              openingId: opening.id,
+              moved: false,
+            };
+          }
           return;
         }
-        const wall = hitTestWall(world);
+        const wall = hitTestWall(model.walls, world, 8 / camera.scale);
         if (wall) {
-          setSelection({ type: "wall", id: wall.id });
-          dragRef.current = {
-            kind: "moveWall",
-            wallId: wall.id,
-            startWorld: world,
-            orig: structuredClone(wall),
-            moved: false,
-          };
+          const sel = choose({ type: "wall", id: wall.id });
+          if (!multiOrNull(sel)) {
+            dragRef.current = {
+              kind: "moveWall",
+              wallId: wall.id,
+              startWorld: world,
+              orig: structuredClone(wall),
+              moved: false,
+            };
+          }
           return;
         }
-        const room = rooms.find((r) => pointInPolygon(world, r.polygon));
-        setSelection(room ? { type: "room", id: room.key } : null);
+        if (!additive) {
+          const room = rooms.find((r) => pointInPolygon(world, r.polygon));
+          setSelection(room ? [{ type: "room", id: room.key }] : []);
+        }
         return;
       }
       default:
@@ -276,12 +328,14 @@ export function useEditorTools(
     if (!drag) return;
 
     if (drag.kind === "pan") {
-      const dx = (e.clientX - drag.startClient.x) / drag.startCamera.scale;
-      const dy = (e.clientY - drag.startClient.y) / drag.startCamera.scale;
+      const dv = screenOffsetToWorld(drag.startCamera, {
+        x: e.clientX - drag.startClient.x,
+        y: e.clientY - drag.startClient.y,
+      });
       setCamera({
         ...drag.startCamera,
-        cx: drag.startCamera.cx - dx,
-        cy: drag.startCamera.cy - dy,
+        cx: drag.startCamera.cx - dv.x,
+        cy: drag.startCamera.cy - dv.y,
       });
       return;
     }
@@ -311,11 +365,37 @@ export function useEditorTools(
       return;
     }
 
+    if (drag.kind === "moveMulti") {
+      const rawDelta = {
+        x: world.x - drag.startWorld.x,
+        y: world.y - drag.startWorld.y,
+      };
+      const delta = e.shiftKey
+        ? rawDelta
+        : {
+            x: Math.round(rawDelta.x / gridSize) * gridSize,
+            y: Math.round(rawDelta.y / gridSize) * gridSize,
+          };
+      if (!drag.moved) {
+        if (delta.x === 0 && delta.y === 0) return;
+        checkpoint();
+        drag.moved = true;
+      }
+      updateModel((m) => {
+        restoreElements(m, drag.origWalls, drag.origHvac);
+        translateSelection(m, drag.sel, delta);
+      });
+      return;
+    }
+
     if (drag.kind === "endpoint") {
       const wall = model.walls.find((w) => w.id === drag.wallId);
       if (!wall) return;
       const other = drag.end === "a" ? wall.b : wall.a;
-      const p = snapPoint(world, other, e.shiftKey);
+      const p = snapPoint(world, other, {
+        free: e.altKey,
+        fine: e.shiftKey,
+      });
       if (!drag.moved) {
         checkpoint();
         drag.moved = true;
@@ -354,6 +434,7 @@ export function useEditorTools(
   const onPointerUp = (e: React.PointerEvent) => {
     releasePointer(svgRef.current, e.pointerId);
     dragRef.current = null;
+    setPanning(false);
   };
 
   const onDoubleClick = () => {
@@ -379,8 +460,12 @@ export function useEditorTools(
     "jumperDuct",
   ];
   const snappedCursor = mouse
-    ? tool === "wall" || tool === "measure"
-      ? snapPoint(mouse, tool === "wall" ? draftAnchor : null, shift)
+    ? tool === "wall" || tool === "measure" || tool === "cutWall"
+      ? tool === "wall"
+        ? snapWallPoint(mouse, draftAnchor, { free: alt, fine: shift })
+        : tool === "measure"
+          ? snapMeasurePoint(mouse, { free: alt, fine: shift })
+          : snapPoint(mouse, null, { free: alt, fine: shift })
       : tool === "duct"
         ? hvacApi.snapHvacPoint(mouse, shift)
         : HVAC_POINT_TOOLS.includes(tool)
@@ -404,6 +489,9 @@ export function useEditorTools(
         }
       : null;
 
+  const rectangleGuide =
+    tool === "wall" ? getRectangleGuide(model.walls, draftAnchor) : null;
+
   const openingPreview = mouse ? openingToolTarget(mouse) : null;
 
   const measureLive: MeasureState | null =
@@ -418,16 +506,24 @@ export function useEditorTools(
         : draftPath
       : null;
   const jumperFirst = tool === "jumperDuct" ? draftAnchor : null;
+  const cutPreview =
+    tool === "cutWall" && draftAnchor && snappedCursor
+      ? { a: draftAnchor, b: snappedCursor }
+      : null;
 
   return {
     mouse,
     shift,
+    spacePan,
+    panning,
     snappedCursor,
     draftWall,
+    rectangleGuide,
     openingPreview,
     measure: measureLive,
     ductPreview,
     jumperFirst,
+    cutPreview,
     onPointerDown,
     onPointerMove,
     onPointerUp,

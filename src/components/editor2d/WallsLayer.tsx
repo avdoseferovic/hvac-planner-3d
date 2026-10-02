@@ -4,7 +4,7 @@ import type { Wall } from "../../types";
 
 interface Props {
   walls: Wall[];
-  selectedId: string | null;
+  selectedIds: ReadonlySet<string>;
 }
 
 const toPoints = (poly: { x: number; y: number }[]) =>
@@ -16,7 +16,7 @@ const toPoints = (poly: { x: number; y: number }[]) =>
  */
 export const WallsLayer = memo(function WallsLayer({
   walls,
-  selectedId,
+  selectedIds,
 }: Props) {
   return (
     <g>
@@ -24,7 +24,7 @@ export const WallsLayer = memo(function WallsLayer({
         <polygon
           key={w.id}
           points={toPoints(wallPolygonExtended(w))}
-          fill={w.id === selectedId ? "#2563eb" : "#3f3f46"}
+          fill={selectedIds.has(w.id) ? "#2563eb" : "#3f3f46"}
           data-wall-id={w.id}
         />
       ))}

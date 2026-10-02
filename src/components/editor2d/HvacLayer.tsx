@@ -91,21 +91,21 @@ function UnitBox({
 interface Props {
   hvac: HvacElement[];
   walls: Wall[];
-  selectedId: string | null;
+  selectedIds: ReadonlySet<string>;
 }
 
 /** 2D symbols for the HVAC layer, incl. drill-diameter labels for penetrations. */
 export const HvacLayer = memo(function HvacLayer({
   hvac,
   walls,
-  selectedId,
+  selectedIds,
 }: Props) {
   return (
     <g>
       {/* ducts go below other symbols */}
       {hvac.map((el) => {
         if (el.kind !== "duct") return null;
-        const selected = el.id === selectedId;
+        const selected = selectedIds.has(el.id);
         const color = selected ? SEL : HVAC_COLORS.duct;
         const pts = el.points.map((p) => `${p.x},${p.y}`).join(" ");
         return (
@@ -142,7 +142,7 @@ export const HvacLayer = memo(function HvacLayer({
       })}
 
       {hvac.map((el) => {
-        const selected = el.id === selectedId;
+        const selected = selectedIds.has(el.id);
         switch (el.kind) {
           case "acUnit":
           case "hrvUnit":

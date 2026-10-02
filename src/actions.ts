@@ -10,33 +10,30 @@ export function commitDuctDraft(): void {
     commit((m) => {
       m.hvac.push(duct);
     });
-    setSelection({ type: "hvac", id: duct.id });
+    setSelection([{ type: "hvac", id: duct.id }]);
   }
   setDraftPath([]);
 }
 
-/** Delete the selected object (and anything that depends on it). */
-export function deleteSelection(sel: Selection): void {
+/** Delete the selected objects (and anything that depends on them). */
+export function deleteSelection(sel: Selection[]): void {
   const { commit, setSelection } = useStore.getState();
+  const ids = (type: Selection["type"]) =>
+    new Set(sel.filter((s) => s.type === type).map((s) => s.id));
+  const wallIds = ids("wall");
+  const openingIds = ids("opening");
+  const hvacIds = ids("hvac");
+  if (wallIds.size + openingIds.size + hvacIds.size === 0) return;
   commit((m) => {
-    switch (sel.type) {
-      case "wall":
-        m.walls = m.walls.filter((w) => w.id !== sel.id);
-        m.openings = m.openings.filter((o) => o.wallId !== sel.id);
-        m.hvac = m.hvac.filter(
-          (h) => !(h.kind === "facadePenetration" && h.wallId === sel.id),
-        );
-        break;
-      case "opening":
-        m.openings = m.openings.filter((o) => o.id !== sel.id);
-        break;
-      case "hvac":
-        m.hvac = m.hvac.filter((h) => h.id !== sel.id);
-        break;
-      case "room":
-        // rooms are derived; deleting a room is not a direct operation
-        break;
-    }
+    m.walls = m.walls.filter((w) => !wallIds.has(w.id));
+    m.openings = m.openings.filter(
+      (o) => !openingIds.has(o.id) && !wallIds.has(o.wallId),
+    );
+    m.hvac = m.hvac.filter(
+      (h) =>
+        !hvacIds.has(h.id) &&
+        !(h.kind === "facadePenetration" && wallIds.has(h.wallId)),
+    );
   });
-  setSelection(null);
+  setSelection([]);
 }

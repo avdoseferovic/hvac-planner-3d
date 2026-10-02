@@ -27,7 +27,8 @@ export interface StoreState {
 
   // --- UI state (not part of undo history, not persisted) ---
   tool: Tool;
-  selection: Selection | null;
+  /** multi-selection; empty array = nothing selected */
+  selection: Selection[];
   viewMode: ViewMode;
   lang: Lang;
   showHvac: boolean;
@@ -45,7 +46,7 @@ export interface StoreState {
 
   // --- actions ---
   setTool: (tool: Tool) => void;
-  setSelection: (sel: Selection | null) => void;
+  setSelection: (sel: Selection[]) => void;
   setViewMode: (v: ViewMode) => void;
   setLang: (lang: Lang) => void;
   setShowHvac: (v: boolean) => void;
@@ -75,7 +76,7 @@ export const useStore = create<StoreState>((set, get) => ({
   future: [],
 
   tool: "select",
-  selection: null,
+  selection: [],
   viewMode: "2d",
   lang: "bs",
   showHvac: true,
@@ -88,7 +89,7 @@ export const useStore = create<StoreState>((set, get) => ({
   wallDraftKind: "exterior",
 
   setTool: (tool) =>
-    set({ tool, selection: null, draftAnchor: null, draftPath: [] }),
+    set({ tool, selection: [], draftAnchor: null, draftPath: [] }),
   setSelection: (selection) => set({ selection }),
   setViewMode: (viewMode) => set({ viewMode }),
   setLang: (lang) => set({ lang }),
@@ -134,7 +135,7 @@ export const useStore = create<StoreState>((set, get) => ({
       model: prev,
       past: past.slice(0, -1),
       future: [model, ...future].slice(0, HISTORY_LIMIT),
-      selection: null,
+      selection: [],
     });
   },
 
@@ -146,7 +147,7 @@ export const useStore = create<StoreState>((set, get) => ({
       model: next,
       past: [...past.slice(-HISTORY_LIMIT), model],
       future: future.slice(1),
-      selection: null,
+      selection: [],
     });
   },
 
@@ -155,7 +156,7 @@ export const useStore = create<StoreState>((set, get) => ({
       model: m,
       past: [],
       future: [],
-      selection: null,
+      selection: [],
       draftAnchor: null,
       draftPath: [],
     }),

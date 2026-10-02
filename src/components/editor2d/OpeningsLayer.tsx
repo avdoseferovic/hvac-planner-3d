@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { add, lerp, perp, scale, wallDirection } from "../../geometry";
-import { openingRect } from "../../openings";
+import { doorSwingGeometry, openingRect } from "../../openings";
 import type { Opening, Wall } from "../../types";
 
 const BG = "#fbfcfd";
@@ -17,13 +17,7 @@ function DoorSymbol({
   opening: Opening;
   color: string;
 }) {
-  const d = wallDirection(wall);
-  const n = perp(d);
-  const c = lerp(wall.a, wall.b, opening.t);
-  const hinge = add(c, scale(d, -opening.width / 2));
-  const jamb = add(c, scale(d, opening.width / 2));
-  // leaf swings to the wall's perp side
-  const tip = add(hinge, scale(n, opening.width));
+  const { hinge, jamb, tip, sweep } = doorSwingGeometry(wall, opening);
   const rect = openingRect(wall, opening);
   return (
     <g>
@@ -45,7 +39,7 @@ function DoorSymbol({
         vectorEffect="non-scaling-stroke"
       />
       <path
-        d={`M ${tip.x} ${tip.y} A ${opening.width} ${opening.width} 0 0 0 ${jamb.x} ${jamb.y}`}
+        d={`M ${tip.x} ${tip.y} A ${opening.width} ${opening.width} 0 0 ${sweep} ${jamb.x} ${jamb.y}`}
         fill="none"
         stroke={color}
         strokeWidth={1}

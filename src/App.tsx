@@ -1,6 +1,13 @@
 import { lazy, Suspense, useEffect } from "react";
 import "./App.css";
 import { commitDuctDraft, deleteSelection } from "./actions";
+import { isTextEntryTarget } from "./dom";
+import {
+  applyGrouping,
+  applyUngrouping,
+  isGroupable,
+  selectionGroupId,
+} from "./grouping";
 import { downloadProject, pickAndLoadProject } from "./persistence";
 import { Editor2D } from "./components/Editor2D";
 const View3D = lazy(() =>
@@ -10,11 +17,12 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { SchedulePanel } from "./components/SchedulePanel";
 import { StatusBar } from "./components/StatusBar";
 import { Toolbar } from "./components/Toolbar";
-import { useStore, useT } from "./store";
+import { nextId, useStore, useT } from "./store";
 import type { Tool } from "./types";
 
 const TOOL_KEYS: Record<string, Tool> = {
   w: "wall",
+  x: "cutWall",
   d: "door",
   n: "window",
   m: "measure",
@@ -29,6 +37,7 @@ const TOOL_KEYS: Record<string, Tool> = {
 const ENABLED_TOOLS: Tool[] = [
   "select",
   "wall",
+  "cutWall",
   "door",
   "window",
   "measure",
@@ -44,6 +53,41 @@ const ENABLED_TOOLS: Tool[] = [
 ];
 const VIEW_3D_ENABLED = true;
 
+const iconStroke = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+const topIcons = {
+  undo: (
+    <svg viewBox="0 0 24 24" {...iconStroke}>
+      <path d="M8 5L3 10l5 5" />
+      <path d="M3 10h11a6 6 0 0 1 0 12h-4" />
+    </svg>
+  ),
+  redo: (
+    <svg viewBox="0 0 24 24" {...iconStroke}>
+      <path d="M16 5l5 5-5 5" />
+      <path d="M21 10H10a6 6 0 0 0 0 12h4" />
+    </svg>
+  ),
+  save: (
+    <svg viewBox="0 0 24 24" {...iconStroke}>
+      <path d="M12 3v11M7.5 10L12 14.5 16.5 10" />
+      <path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+    </svg>
+  ),
+  load: (
+    <svg viewBox="0 0 24 24" {...iconStroke}>
+      <path d="M12 14V3M7.5 7L12 2.5 16.5 7" />
+      <path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+    </svg>
+  ),
+};
+
 export default function App() {
   const t = useT();
   const undo = useStore((s) => s.undo);
@@ -57,12 +101,9 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable
-      ) {
+      if (isTextEntryTarget(target)) {
+        // Escape leaves the field so shortcuts work again immediately
+        if (e.key === "Escape") target.blur();
         return;
       }
       const st = useStore.getState();
@@ -73,10 +114,25 @@ export default function App() {
         else st.undo();
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          const gid = selectionGroupId(st.model, st.selection);
+          if (gid) st.commit((m) => applyUngrouping(m, gid));
+        } else {
+          const groupable = st.selection.filter(isGroupable);
+          if (groupable.length >= 2) {
+            const id = nextId("group");
+            st.commit((m) => applyGrouping(m, groupable, id));
+            st.setSelection(groupable);
+          }
+        }
+        return;
+      }
       if (e.key === "Escape") {
         if (st.draftPath.length > 0) st.setDraftPath([]);
         else if (st.draftAnchor) st.setDraftAnchor(null);
-        else if (st.selection) st.setSelection(null);
+        else if (st.selection.length) st.setSelection([]);
         else st.setTool("select");
         return;
       }
@@ -127,17 +183,17 @@ export default function App() {
             disabled={!canUndo}
             title={`${t("action.undo")} (Ctrl+Z)`}
           >
-            ⟲ {t("action.undo")}
+            {topIcons.undo} {t("action.undo")}
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
             title={`${t("action.redo")} (Ctrl+Shift+Z)`}
           >
-            ⟳ {t("action.redo")}
+            {topIcons.redo} {t("action.redo")}
           </button>
           <button onClick={() => downloadProject(useStore.getState().model)}>
-            ⤓ {t("action.save")}
+            {topIcons.save} {t("action.save")}
           </button>
           <button
             onClick={async () => {
@@ -149,7 +205,7 @@ export default function App() {
               }
             }}
           >
-            ⤒ {t("action.load")}
+            {topIcons.load} {t("action.load")}
           </button>
         </div>
       </header>

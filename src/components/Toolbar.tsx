@@ -30,6 +30,13 @@ const icons = {
       <line x1="15" y1="9" x2="15" y2="15" />
     </svg>
   ),
+  cutWall: (
+    <svg viewBox="0 0 24 24" {...stroke}>
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="6" cy="18" r="2.5" />
+      <path d="M8.1 7.6L20 18M8.1 16.4L20 6" />
+    </svg>
+  ),
   door: (
     <svg viewBox="0 0 24 24" {...stroke}>
       <path d="M4 20h16" />
@@ -134,6 +141,12 @@ const DRAWING_TOOLS: ToolDef[] = [
     icon: icons.select,
   },
   { tool: "wall", labelKey: "tool.wall", shortcut: "W", icon: icons.wall },
+  {
+    tool: "cutWall",
+    labelKey: "tool.cutWall",
+    shortcut: "X",
+    icon: icons.cutWall,
+  },
   { tool: "door", labelKey: "tool.door", shortcut: "D", icon: icons.door },
   {
     tool: "window",
@@ -231,14 +244,15 @@ export function Toolbar() {
 
   return (
     <div className="toolbar" data-testid="toolbar">
+      <div className="toolbar-label">{t("toolbar.draw")}</div>
       {DRAWING_TOOLS.map((d) => (
         <ToolButton key={d.tool} def={d} />
       ))}
-      <div className="toolbar-divider" />
+      <div className="toolbar-label">{t("toolbar.hvac")}</div>
       {HVAC_TOOLS.map((d) => (
         <ToolButton key={d.tool} def={d} />
       ))}
-      <div className="toolbar-divider" />
+      <div className="toolbar-label">{t("toolbar.view")}</div>
       <button
         className={`toolbtn ${showHvac ? "active" : ""}`}
         title={t("view.hvacLayer")}

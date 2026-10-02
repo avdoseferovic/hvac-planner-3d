@@ -10,24 +10,27 @@ export function StatusBar() {
   const hint =
     tool === "wall"
       ? t("hint.wall")
-      : tool === "door" || tool === "window"
-        ? t("hint.opening")
-        : tool === "measure"
-          ? t("hint.measure")
-          : tool === "duct"
-            ? t("hint.duct")
-            : tool === "jumperDuct"
-              ? t("hint.jumper")
-              : tool === "facadePenetration"
-                ? t("hint.facade")
-                : tool === "select"
-                  ? t("hint.select")
-                  : t("hint.hvacPlace");
+      : tool === "cutWall"
+        ? t("hint.cut")
+        : tool === "door" || tool === "window"
+          ? t("hint.opening")
+          : tool === "measure"
+            ? t("hint.measure")
+            : tool === "duct"
+              ? t("hint.duct")
+              : tool === "jumperDuct"
+                ? t("hint.jumper")
+                : tool === "facadePenetration"
+                  ? t("hint.facade")
+                  : tool === "select"
+                    ? t("hint.select")
+                    : t("hint.hvacPlace");
 
   return (
     <footer className="statusbar" data-testid="statusbar">
       <span className="hint">{hint}</span>
       <span className="spacer" />
+      <span className="nav-hint">{t("hint.pan")}</span>
       <span>
         {wallCount} {t("status.walls")} · {rooms.length} {t("status.rooms")}
       </span>

@@ -62,7 +62,10 @@ export function ProjectProps() {
         <span>{t("props.language")}</span>
         <select
           value={lang}
-          onChange={(e) => setLang(e.target.value as "bs" | "en")}
+          onChange={(e) => {
+            setLang(e.target.value as "bs" | "en");
+            e.currentTarget.blur();
+          }}
         >
           <option value="bs">Bosanski</option>
           <option value="en">English</option>

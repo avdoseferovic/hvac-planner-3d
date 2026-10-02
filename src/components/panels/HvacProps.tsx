@@ -38,7 +38,10 @@ export function HvacProps({ el }: { el: HvacElement }) {
       <span>{t("hvac.connDiameter")}</span>
       <select
         value={current}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => {
+          onChange(Number(e.target.value));
+          e.currentTarget.blur();
+        }}
       >
         {CONNECTION_DIAMETERS.map((d) => (
           <option key={d} value={d}>

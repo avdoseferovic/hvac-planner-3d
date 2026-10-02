@@ -6,6 +6,7 @@ const en = {
   // tools
   "tool.select": "Select",
   "tool.wall": "Wall",
+  "tool.cutWall": "Cut wall",
   "tool.door": "Door",
   "tool.window": "Window",
   "tool.measure": "Measure",
@@ -30,6 +31,18 @@ const en = {
   "view.hideSlab": "Hide slab",
   "view.hvacLayer": "HVAC layer",
   "view.keepOut": "Keep-out zones",
+  "view.zoomIn": "Zoom in",
+  "view.zoomOut": "Zoom out",
+  "view.zoomFit": "Fit plan",
+  "view.zoomReset": "Reset zoom to 100%",
+  "view.rotateLeft": "Rotate left 90° (Shift = 15°)",
+  "view.rotateRight": "Rotate right 90° (Shift = 15°)",
+  "view.rotateReset": "Reset rotation",
+
+  // toolbar groups
+  "toolbar.draw": "Draw",
+  "toolbar.hvac": "HVAC",
+  "toolbar.view": "View",
 
   // actions
   "action.undo": "Undo",
@@ -39,10 +52,15 @@ const en = {
   "action.delete": "Delete",
   "action.exportCsv": "Export CSV",
   "action.newProject": "New project",
+  "action.group": "Group",
+  "action.ungroup": "Ungroup",
 
   // properties panel
   "props.title": "Properties",
   "props.noSelection": "Nothing selected",
+  "props.multiSelected": "Multiple selection",
+  "props.objects": "objects",
+  "hint.groupShortcut": "Ctrl+G = group · Ctrl+Shift+G = ungroup",
   "props.project": "Project settings",
   "props.wall": "Wall",
   "props.thickness": "Thickness (cm)",
@@ -68,7 +86,8 @@ const en = {
   "hvac.insulated": "Insulated",
   "hvac.heightAboveFloor": "Height above floor (cm)",
   "hint.hvacPlace": "Click to place · Esc = cancel",
-  "hint.duct": "Click points along the route · Enter/double-click = finish · Esc = cancel",
+  "hint.duct":
+    "Click points along the route · Enter/double-click = finish · Esc = cancel",
   "hint.jumper": "Click room-side hole, then hallway-side hole",
   "hint.facade": "Click on an exterior wall",
 
@@ -93,6 +112,12 @@ const en = {
   "props.width": "Width (cm)",
   "props.height": "Height (cm)",
   "props.sill": "Sill height (cm)",
+  "props.hinge": "Hinge side",
+  "props.hingeLeft": "Left",
+  "props.hingeRight": "Right",
+  "props.swing": "Opens",
+  "props.swingIn": "Inward",
+  "props.swingOut": "Outward",
   "props.room": "Room",
   "props.roomName": "Name",
   "props.area": "Area",
@@ -101,10 +126,21 @@ const en = {
   "status.walls": "walls",
   "status.rooms": "rooms",
   "hint.wall":
-    "Click to place wall points · Shift = free angle · Enter/double-click = finish · Esc = cancel",
-  "hint.select": "Click to select · drag to move · Delete = remove",
+    "Click to place wall points · measured endpoints snap to wall starts · Shift = straight, no grid · Alt = free angle · Enter/double-click = finish · Esc = cancel",
+  "hint.select":
+    "Click to select · Shift+click = multi-select · drag to move · Delete = remove",
   "hint.opening": "Hover a wall, click to place · Esc = cancel",
-  "hint.measure": "Click two points to measure · Esc = cancel",
+  "hint.measure":
+    "Click two points to measure · Snaps to wall edges · Alt = free · Esc = cancel",
+  "hint.pan": "Space+drag = pan · Scroll = zoom · F = fit",
+  "hint.cut":
+    "Click the start and end of the wall span to remove · Esc = cancel",
+  "hint.panShort": "pan",
+
+  // empty state
+  "empty.title": "Start your plan",
+  "empty.body":
+    "Press W or pick the Wall tool to draw walls. Hold Space and drag to move around, scroll to zoom.",
 
   // units
   "unit.cm": "cm",
@@ -118,6 +154,7 @@ export type TranslationKey = keyof typeof en;
 const bs: Record<TranslationKey, string> = {
   "tool.select": "Odaberi",
   "tool.wall": "Zid",
+  "tool.cutWall": "Isijeci zid",
   "tool.door": "Vrata",
   "tool.window": "Prozor",
   "tool.measure": "Mjerenje",
@@ -141,6 +178,17 @@ const bs: Record<TranslationKey, string> = {
   "view.hideSlab": "Sakrij ploču",
   "view.hvacLayer": "HVAC sloj",
   "view.keepOut": "Zabranjene zone",
+  "view.zoomIn": "Uvećaj",
+  "view.zoomOut": "Umanji",
+  "view.zoomFit": "Prikaži cijeli plan",
+  "view.zoomReset": "Vrati na 100%",
+  "view.rotateLeft": "Rotiraj lijevo 90° (Shift = 15°)",
+  "view.rotateRight": "Rotiraj desno 90° (Shift = 15°)",
+  "view.rotateReset": "Poništi rotaciju",
+
+  "toolbar.draw": "Crtanje",
+  "toolbar.hvac": "HVAC",
+  "toolbar.view": "Prikaz",
 
   "action.undo": "Poništi",
   "action.redo": "Ponovi",
@@ -149,9 +197,14 @@ const bs: Record<TranslationKey, string> = {
   "action.delete": "Obriši",
   "action.exportCsv": "Izvezi CSV",
   "action.newProject": "Novi projekat",
+  "action.group": "Grupiši",
+  "action.ungroup": "Razgrupiši",
 
   "props.title": "Svojstva",
   "props.noSelection": "Ništa nije odabrano",
+  "props.multiSelected": "Višestruki odabir",
+  "props.objects": "objekata",
+  "hint.groupShortcut": "Ctrl+G = grupiši · Ctrl+Shift+G = razgrupiši",
   "props.project": "Postavke projekta",
   "props.wall": "Zid",
   "props.thickness": "Debljina (cm)",
@@ -176,7 +229,8 @@ const bs: Record<TranslationKey, string> = {
   "hvac.insulated": "Izolovan",
   "hvac.heightAboveFloor": "Visina od poda (cm)",
   "hint.hvacPlace": "Klik za postavljanje · Esc = odustani",
-  "hint.duct": "Klikći tačke duž trase · Enter/dupli klik = završi · Esc = odustani",
+  "hint.duct":
+    "Klikći tačke duž trase · Enter/dupli klik = završi · Esc = odustani",
   "hint.jumper": "Klikni rupu u sobi, zatim rupu u hodniku",
   "hint.facade": "Klikni na vanjski zid",
 
@@ -199,6 +253,12 @@ const bs: Record<TranslationKey, string> = {
   "props.width": "Širina (cm)",
   "props.height": "Visina (cm)",
   "props.sill": "Visina parapeta (cm)",
+  "props.hinge": "Strana šarki",
+  "props.hingeLeft": "Lijevo",
+  "props.hingeRight": "Desno",
+  "props.swing": "Otvaranje",
+  "props.swingIn": "Unutra",
+  "props.swingOut": "Vani",
   "props.room": "Prostorija",
   "props.roomName": "Naziv",
   "props.area": "Površina",
@@ -206,11 +266,20 @@ const bs: Record<TranslationKey, string> = {
   "status.walls": "zidova",
   "status.rooms": "prostorija",
   "hint.wall":
-    "Klik za tačke zida · Shift = slobodan ugao · Enter/dupli klik = završi · Esc = odustani",
-  "hint.select": "Klik za odabir · povuci za pomjeranje · Delete = obriši",
+    "Klik za tačke zida · krajnje tačke mjerenja se hvataju pri početku zida · Shift = pravo, bez mreže · Alt = slobodan ugao · Enter/dupli klik = završi · Esc = odustani",
+  "hint.select":
+    "Klik za odabir · Shift+klik = više objekata · povuci za pomjeranje · Delete = obriši",
   "hint.opening":
     "Pređi mišem preko zida, klik za postavljanje · Esc = odustani",
-  "hint.measure": "Klikni dvije tačke za mjerenje · Esc = odustani",
+  "hint.measure":
+    "Klikni dvije tačke za mjerenje · Hvata ivice zida · Alt = slobodno · Esc = odustani",
+  "hint.pan": "Space+povlačenje = pomjeranje · Skrol = zum · F = cijeli plan",
+  "hint.cut": "Klikni početak i kraj dijela zida koji brišeš · Esc = odustani",
+  "hint.panShort": "pomjeranje",
+
+  "empty.title": "Počni svoj plan",
+  "empty.body":
+    "Pritisni W ili odaberi alat Zid za crtanje zidova. Drži Space i povlači za pomjeranje, skrolaj za zum.",
 
   "unit.cm": "cm",
   "unit.m": "m",

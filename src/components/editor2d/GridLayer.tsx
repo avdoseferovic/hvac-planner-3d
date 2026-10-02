@@ -1,12 +1,7 @@
 import { memo } from "react";
+import type { Camera } from "../../camera";
 
-export interface Camera {
-  /** world coords (cm) at the viewport center */
-  cx: number;
-  cy: number;
-  /** pixels per cm */
-  scale: number;
-}
+export type { Camera } from "../../camera";
 
 interface Props {
   camera: Camera;
@@ -22,11 +17,17 @@ export const GridLayer = memo(function GridLayer({
   height,
   gridSize,
 }: Props) {
-  const { cx, cy, scale } = camera;
-  const x0 = cx - width / 2 / scale;
-  const x1 = cx + width / 2 / scale;
-  const y0 = cy - height / 2 / scale;
-  const y1 = cy + height / 2 / scale;
+  const { cx, cy, scale, rotation } = camera;
+  // world-space extent of the (possibly rotated) viewport
+  const r = (rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(r));
+  const sin = Math.abs(Math.sin(r));
+  const halfW = (width * cos + height * sin) / 2 / scale;
+  const halfH = (width * sin + height * cos) / 2 / scale;
+  const x0 = cx - halfW;
+  const x1 = cx + halfW;
+  const y0 = cy - halfH;
+  const y1 = cy + halfH;
 
   // pick the smallest multiple of gridSize that renders at >= 8 px
   const multipliers = [1, 2, 5, 10, 20, 50, 100, 200, 500];

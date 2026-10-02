@@ -54,6 +54,36 @@ export function openingRect(wall: Wall, opening: Opening): Point[] {
   ];
 }
 
+export interface DoorSwingGeometry {
+  /** jamb the leaf hinges on */
+  hinge: Point;
+  /** opposite jamb (arc end) */
+  jamb: Point;
+  /** open leaf tip (arc start) */
+  tip: Point;
+  /** SVG arc sweep flag so the quarter arc is centered on the hinge */
+  sweep: 0 | 1;
+}
+
+/** Plan-view swing symbol for a door, honoring its hinge/swing settings. */
+export function doorSwingGeometry(
+  wall: Wall,
+  opening: Opening,
+): DoorSwingGeometry {
+  const d = wallDirection(wall);
+  const n = perp(d);
+  const c = lerp(wall.a, wall.b, opening.t);
+  const hingeSign = (opening.hinge ?? "left") === "left" ? -1 : 1;
+  const swingSign = (opening.swing ?? "in") === "in" ? 1 : -1;
+  const hinge = add(c, scale(d, (hingeSign * opening.width) / 2));
+  const jamb = add(c, scale(d, (-hingeSign * opening.width) / 2));
+  const tip = add(hinge, scale(n, swingSign * opening.width));
+  const v1 = { x: tip.x - hinge.x, y: tip.y - hinge.y };
+  const v2 = { x: jamb.x - hinge.x, y: jamb.y - hinge.y };
+  const sweep = v1.x * v2.y - v1.y * v2.x > 0 ? 1 : 0;
+  return { hinge, jamb, tip, sweep };
+}
+
 /** Distance from a point to an opening's center (for hit-testing). */
 export function openingHitRadius(opening: Opening): number {
   return opening.width / 2;
